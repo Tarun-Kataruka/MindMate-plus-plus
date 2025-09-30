@@ -1,0 +1,11 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Expo / React Native
+.expo
+.expo-shared
+
+# Mac
+.DS_Store
