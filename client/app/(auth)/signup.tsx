@@ -34,9 +34,7 @@ export default function SignupScreen() {
 
     try {
       const res = await fetch(
-        process.env.EXPO_PUBLIC_API_URL
-          ? `${process.env.NEXT_PUBLIC_API_URL}api/auth/signup`
-          : 'http://localhost:5000/api/auth/signup',
+      `${process.env.NEXT_PUBLIC_API_URL}api/auth/signup`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
