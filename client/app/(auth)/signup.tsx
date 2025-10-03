@@ -50,8 +50,15 @@ export default function SignupScreen() {
       }
 
       if (data?.token) {
-        // @ts-ignore
-        globalThis.authToken = data.token;
+        try {
+          // @ts-ignore
+          (globalThis as any).authToken = data.token;
+          if (typeof window !== 'undefined' && window?.localStorage) {
+            window.localStorage.setItem('authToken', data.token);
+          }
+        } catch {
+          // ignore storage errors
+        }
       }
 
       router.replace('/(tabs)');

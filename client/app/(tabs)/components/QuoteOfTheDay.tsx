@@ -17,12 +17,45 @@ export default function QuoteOfTheDay({ apiBaseUrl }: QuoteOfTheDayProps) {
   useEffect(() => {
     const fetchQuote = async () => {
       try {
+        // Daily cache key (local date)
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const storageKey = `quote:${todayKey}`;
+        let cached: string | null = null;
+        try {
+          if (typeof window !== 'undefined' && window?.localStorage) {
+            cached = window.localStorage.getItem(storageKey);
+          }
+        } catch {
+          // ignore storage errors
+        }
+
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached) as QuoteData;
+            if (parsed?.content) {
+              setQuoteData({ content: parsed.content, author: parsed.author || 'Unknown' });
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // fall through to refetch on parse error
+          }
+        }
+
         const baseUrl = apiBaseUrl ?? process.env.EXPO_PUBLIC_API_URL ?? '';
         const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
         const res = await fetch(`${normalizedBase}api/quotes`);
         const data = await res.json();
         if (data?.content) {
-          setQuoteData({ content: data.content, author: data.author || 'Unknown' });
+          const normalized: QuoteData = { content: data.content, author: data.author || 'Unknown' };
+          setQuoteData(normalized);
+          try {
+            if (typeof window !== 'undefined' && window?.localStorage) {
+              window.localStorage.setItem(storageKey, JSON.stringify(normalized));
+            }
+          } catch {
+            // ignore storage errors
+          }
         }
       } catch (e) {
         console.error('Failed to fetch quote:', e);
