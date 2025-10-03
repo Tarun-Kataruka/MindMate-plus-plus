@@ -5,9 +5,10 @@ import { router, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SignupScreen() {
-  const [state, setState] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [state, setState] = useState({ name: '', email: '', password: '', confirmPassword: '', age: '', gender: 'other' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:4000/').replace(/\/?$/, '/'));
 
   const handleSignup = async () => {
     const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -34,11 +35,11 @@ export default function SignupScreen() {
 
     try {
       const res = await fetch(
-      `${process.env.EXPO_PUBLIC_API_URL}api/auth/signup`,
+        `${API_BASE}api/auth/signup`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: state.name, email: state.email, password: state.password }),
+          body: JSON.stringify({ name: state.name, email: state.email, password: state.password, age: state.age ? Number(state.age) : undefined, gender: state.gender }),
         }
       );
 
@@ -74,6 +75,14 @@ export default function SignupScreen() {
             placeholder="Name"
             value={state.name}
             onChangeText={(text) => setState({ ...state, name: text })}
+          />
+
+          <TextInput
+            style={styles.textInput}
+            placeholder="Age"
+            value={state.age}
+            onChangeText={(text) => setState({ ...state, age: text.replace(/[^0-9]/g, '') })}
+            keyboardType="number-pad"
           />
 
           <TextInput
@@ -117,6 +126,27 @@ export default function SignupScreen() {
                 size={22}
                 color={Colors.secondary}
               />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.genderRow}>
+            <TouchableOpacity
+              style={[styles.genderChip, state.gender === 'male' && styles.genderChipActive]}
+              onPress={() => setState({ ...state, gender: 'male' })}
+            >
+              <Text style={[styles.genderText, state.gender === 'male' && styles.genderTextActive]}>Male</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.genderChip, state.gender === 'female' && styles.genderChipActive]}
+              onPress={() => setState({ ...state, gender: 'female' })}
+            >
+              <Text style={[styles.genderText, state.gender === 'female' && styles.genderTextActive]}>Female</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.genderChip, state.gender === 'other' && styles.genderChipActive]}
+              onPress={() => setState({ ...state, gender: 'other' })}
+            >
+              <Text style={[styles.genderText, state.gender === 'other' && styles.genderTextActive]}>Other</Text>
             </TouchableOpacity>
           </View>
 
@@ -187,4 +217,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   switchText: { alignSelf: 'center', marginTop: 12, color: Colors.secondary },
+  genderRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  genderChip: {
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginHorizontal: 6,
+    backgroundColor: Colors.accent,
+  },
+  genderChipActive: {
+    backgroundColor: Colors.yellow,
+  },
+  genderText: {
+    color: Colors.secondary,
+    fontWeight: '600',
+  },
+  genderTextActive: {
+    color: Colors.white,
+  },
 });

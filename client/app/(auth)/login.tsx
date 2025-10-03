@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity, ScrollView, Platform, Alert, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity, ScrollView, Platform, Alert, Dimensions, ToastAndroid } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { router, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,16 @@ import { Ionicons } from '@expo/vector-icons';
 export default function LoginScreen() {
   const [state, setState] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+
+  const showToast = (message: string) => {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+    } else if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') window.alert(message);
+    } else {
+      Alert.alert('Notice', message);
+    }
+  };
 
   const handleLogin = async () => {
     const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -29,6 +39,11 @@ export default function LoginScreen() {
       });
 
       const data = await res.json();
+      if (res.status === 401) {
+        showToast('Wrong email or password');
+        return;
+      }
+
       if (!res.ok) {
         Alert.alert('Error', data?.message || 'Failed to log in');
         return;
