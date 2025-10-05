@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, TextInput, Platform, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 // Assuming Colors is defined in '@/constants/theme'
@@ -22,17 +22,40 @@ const initialConcerns = [
 ];
 
 export default function EditProfileScreen() {
+    const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || '').replace(/\/?$/, '/'));
     // 1. Consume Context (GET initial data and the SETTER function)
     const { userData, setUserData } = useUser();
 
     // 2. Initialize local state from global context data
     const [fullName, setFullName] = useState(userData.name);
-    // Email is kept read-only but needs state to match the pattern
     const [email, setEmail] = useState(userData.email); 
     const [gender, setGender] = useState(userData.gender);
     const [phone, setPhone] = useState(userData.phone);
     const [age, setAge] = useState(String(userData.age));
     const [selectedConcerns, setSelectedConcerns] = useState<string[]>(userData.concerns);
+    // Ensure latest data on reload
+    useEffect(() => {
+      const load = async () => {
+        try {
+          const token = (globalThis as any).authToken as string | undefined;
+          if (!token) return;
+          const res = await fetch(`${API_BASE}api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+          const data = await res.json();
+          if (res.ok && data?.user) {
+            setFullName(data.user.name || '');
+            setEmail(data.user.email || '');
+            setGender(data.user.gender || 'other');
+            setPhone(data.user.phone || '');
+            setAge(String(data.user.age || ''));
+            setSelectedConcerns(Array.isArray(data.user.concerns) ? data.user.concerns : []);
+            if (data.user.avatarUrl) {
+              (EditProfileScreen as any).pendingAvatarUrl = String(data.user.avatarUrl);
+            }
+          }
+        } catch {}
+      };
+      load();
+    }, []);
 
     const toggleConcern = (concern: string) => {
       setSelectedConcerns(prev =>
@@ -42,24 +65,37 @@ export default function EditProfileScreen() {
       );
     };
 
-    const handleSaveChanges = () => {
-      // 1. Assemble the new data object
+    const handleSaveChanges = async () => {
       const newUserData: UserData = {
-          name: fullName,
-          email: email, // Email is read-only but included for completeness
-          gender: gender,
-          phone: phone,
-          age: parseInt(age) || userData.age, // Handle case where age might be empty string
-          concerns: selectedConcerns,
+        name: fullName,
+        email: email,
+        gender: gender,
+        phone: phone,
+        age: parseInt(age) || userData.age,
+        concerns: selectedConcerns,
       };
+      try {
+        const token = (globalThis as any).authToken as string | undefined;
+        if (token) {
+          await fetch(`${API_BASE}api/auth/me`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              name: newUserData.name,
+              age: newUserData.age,
+              gender: newUserData.gender,
+              phone: newUserData.phone,
+              concerns: newUserData.concerns,
+              email: newUserData.email,
+              avatarUrl: (EditProfileScreen as any).pendingAvatarUrl,
+            }),
+          });
+        }
+      } catch {}
 
-      // 2. **Update Global State via Context**
-      setUserData(newUserData); 
-      
-      console.log("Saving changes and updating context:", newUserData);
-      
-      // 3. Navigate back to the Profile screen
-      router.back(); 
+      // Optimistic context update so both Profile and Home can reflect immediately
+      setUserData({ ...newUserData, ...(EditProfileScreen as any).pendingAvatarUrl ? { /* @ts-ignore */ avatarUrl: (EditProfileScreen as any).pendingAvatarUrl } : {} } as any);
+      router.back();
     };
 
     return (
@@ -75,12 +111,35 @@ export default function EditProfileScreen() {
 
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
-          {/* Placeholder for Shreya's Avatar - Corrected path */}
           <Image 
-            source={{ uri: "https://placehold.co/100x100/388e3c/ffffff?text=" + fullName.charAt(0) }} 
+            source={{ uri: (EditProfileScreen as any).pendingAvatarUrl || "https://placehold.co/100x100/388e3c/ffffff?text=" + fullName.charAt(0) }} 
             style={styles.avatar} 
           /> 
-          <TouchableOpacity style={styles.cameraIcon}>
+          <TouchableOpacity style={styles.cameraIcon} onPress={async () => {
+            try {
+              if (Platform.OS === 'web') {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = async () => {
+                  const file = (input.files && input.files[0]) || null;
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    (EditProfileScreen as any).pendingAvatarUrl = String(reader.result || '');
+                    // force rerender by changing local state minimally
+                    setFullName((v) => v + '');
+                  };
+                  reader.readAsDataURL(file);
+                };
+                input.click();
+              } else {
+                Alert.alert('Not implemented', 'Native image picker can be added on request.');
+              }
+            } catch (e: any) {
+              Alert.alert('Error', e?.message || 'Failed to pick image');
+            }
+          }}>
             <Ionicons name="camera-outline" size={20} color={Colors.white} />
           </TouchableOpacity>
         </View>
@@ -95,15 +154,15 @@ export default function EditProfileScreen() {
             onChangeText={setFullName}
           />
 
-          {/* Email Display (Read-only) */}
+          {/* Email (now editable) */}
           <InputWithIcon 
             iconName="mail-outline" 
             placeholder="Email" 
             value={email} 
             onChangeText={setEmail}
             keyboardType="email-address"
-            editable={false} // Email typically not editable
-            isUnderlined={false} // Match design: Email text is separate
+            editable={true}
+            isUnderlined={true}
             style={{marginBottom: 20}}
           />
           

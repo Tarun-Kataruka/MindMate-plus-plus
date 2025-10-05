@@ -22,21 +22,19 @@ export default function TabLayout() {
     tabBarInactiveTintColor: INACTIVE_COLOR, // Slightly dimmed white for inactive
     headerShown: false,
     tabBarButton: HapticTab,
+    tabBarShowLabel: false,
     tabBarStyle: {
-        backgroundColor: Colors.green, // Solid green background to match the design screenshot
+        backgroundColor: Colors.primary, // Solid green background to match the design screenshot
         borderTopWidth: 0, // Remove top border for a clean look
-        height: Platform.OS === 'ios' ? 90 : 60, // Adjust height for safety area
-        paddingBottom: Platform.OS === 'ios' ? 30 : 5,
-        paddingTop: 5,
+        height: Platform.OS === 'ios' ? 80 : 60, // Adjust height for safety area
+        paddingBottom: Platform.OS === 'ios' ? 22 : 6,
+        paddingTop: 6,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
         elevation: 0, // Ensure no default shadow on Android
         shadowOpacity: 0, // Ensure no default shadow on iOS
     },
-    tabBarLabelStyle: {
-        fontSize: 10,
-        fontWeight: '600',
-        // Set the base color for labels to the inactive color
-        color: INACTIVE_COLOR, 
-    }
+    // labels are hidden, no label style needed
   };
 
   return (
@@ -47,27 +45,27 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           // Icon for Home
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
 
       {/* 2. Journal Screen - Icon: Book */}
       <Tabs.Screen
-        name="journal/journal"
+        name="journal/journals"
         options={{
           title: 'Journal',
           // Icon for Journal
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="book.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
         }}
       />
 
       {/* 3. Therapist Screen - Icon: Person.2 (Better represents support/group) */}
       <Tabs.Screen
-        name="therapist/therapist"
+        name="therapist/therapists"
         options={{
           title: 'Therapist',
           // Using person.2.fill as it's a common icon for support/multiple people
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.2.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
         }}
       />
 
@@ -77,7 +75,7 @@ export default function TabLayout() {
         options={{
           title: 'Fitness',
           // Icon for Fitness (using checkmark.circle.fill for goal tracking/fitness)
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="checkmark.circle.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="checkmark.circle.fill" color={color} />,
         }}
       />
       

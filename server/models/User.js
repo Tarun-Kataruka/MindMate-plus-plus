@@ -7,6 +7,9 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true },
     age: { type: Number, min: 13 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
+    phone: { type: String, trim: true },
+    concerns: { type: [String], default: [] },
+    avatarUrl: { type: String, trim: true },
   },
   { timestamps: true }
 );

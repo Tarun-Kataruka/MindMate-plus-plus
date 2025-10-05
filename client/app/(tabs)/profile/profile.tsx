@@ -1,5 +1,6 @@
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState, createContext, useContext, useCallback } from 'react';
 import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 // Assuming Colors is defined in '@/constants/theme'
@@ -23,6 +24,7 @@ export interface UserData {
   email: string;
   phone: string;
   concerns: string[];
+  avatarUrl?: string;
 }
 
 interface UserContextType {
@@ -37,6 +39,7 @@ const initialUserData: UserData = {
   email: 'shreyaguptaapril@gmail.com',
   phone: '9876543210',
   concerns: ['Anger', 'Anxiety and Panic Attacks', 'Depression', 'Sleep disorders'],
+  avatarUrl: undefined,
 };
 
 // 2. Create Context
@@ -105,7 +108,36 @@ const MOCK_APPOINTMENTS = [
 
 export function ProfileScreenContent() {
   // 5. Consume Context (GET the latest data)
-  const { userData } = useUser(); 
+  const { userData, setUserData } = useUser(); 
+  const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || '').replace(/\/?$/, '/'));
+  const fetchProfile = useCallback(async () => {
+    try {
+      const token = (globalThis as any).authToken as string | undefined;
+      if (!token) return;
+      const res = await fetch(`${API_BASE}api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data?.user) {
+        setUserData({
+          name: data.user.name || '',
+          gender: data.user.gender || 'other',
+          age: data.user.age || 0,
+          email: data.user.email || '',
+          phone: data.user.phone || '',
+          concerns: Array.isArray(data.user.concerns) ? data.user.concerns : [],
+          // @ts-ignore
+          avatarUrl: data.user.avatarUrl || undefined,
+        });
+      }
+    } catch {}
+  }, [setUserData]);
+  React.useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchProfile();
+    }, [fetchProfile])
+  );
   const allConcerns = ['Anger', 'Anxiety and Panic Attacks', 'Depression', 'Eating disorders', 'Self-esteem', 'Self-harm', 'Stress', 'Sleep disorders'];
 
   return (
@@ -125,8 +157,8 @@ export function ProfileScreenContent() {
       {/* User Info Section */}
       <View style={styles.profileContainer}>
         <View style={styles.avatarCircle}>
-          {/* Placeholder for Shreya's Avatar */}
-          <Image source={{ uri: "https://placehold.co/110x110/388e3c/ffffff?text=" + userData.name.charAt(0) }} style={styles.avatar} /> 
+          {/* Avatar (falls back to initial if no URL) */}
+          <Image source={{ uri: ((userData as any).avatarUrl as string) || ("https://placehold.co/110x110/388e3c/ffffff?text=" + userData.name.charAt(0)) }} style={styles.avatar} /> 
         </View>
         {/* !!! DISPLAY NAME FROM CONTEXT !!! */}
         <Text style={styles.name}>{userData.name}</Text>
