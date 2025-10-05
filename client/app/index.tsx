@@ -7,7 +7,6 @@ export default function Index() {
     if (typeof window !== 'undefined' && window?.localStorage) {
       token = window.localStorage.getItem('authToken');
     }
-    // fallback to in-memory token if present
     if (!token && typeof globalThis !== 'undefined') {
       // @ts-ignore
       token = (globalThis as any).authToken ?? null;

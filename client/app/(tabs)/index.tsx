@@ -7,14 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import QuoteOfTheDay from "./components/QuoteOfTheDay";
+import QuoteOfTheDay from "../../components/QuoteOfTheDay";
 import { router } from "expo-router";
-import TracksSection from "./components/TracksSection";
+import TracksSection from "../../components/TracksSection";
 import { useFocusEffect } from "@react-navigation/native";
 
 const AVATAR_URL =
   "https://img.icons8.com/ios-filled/100/000000/user-male-circle.png";
-// Local bot GIF asset
 const BOT_GIF = require("../../assets/tink.gif");
 
 export default function HomeScreen() {
@@ -48,7 +47,6 @@ export default function HomeScreen() {
       style={styles.scrollContainer}
       contentContainerStyle={styles.contentContainer}
     >
-      {/* Green Rounded Header */}
       <View style={styles.headerBg}>
         <Text style={styles.greeting}>Hello !</Text>
         <Text style={styles.name}>{firstName || "Friend"}</Text>
@@ -65,7 +63,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Quote of the Day */}
       <View style={styles.quoteBlock}>
         <Text style={styles.quoteLabel}>QUOTE OF THE DAY</Text>
         <View style={styles.quoteBg}>

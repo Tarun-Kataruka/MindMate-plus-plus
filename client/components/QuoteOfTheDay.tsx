@@ -17,7 +17,6 @@ export default function QuoteOfTheDay({ apiBaseUrl }: QuoteOfTheDayProps) {
   useEffect(() => {
     const fetchQuote = async () => {
       try {
-        // Daily cache key (local date)
         const todayKey = new Date().toISOString().slice(0, 10);
         const storageKey = `quote:${todayKey}`;
         let cached: string | null = null;
@@ -26,7 +25,6 @@ export default function QuoteOfTheDay({ apiBaseUrl }: QuoteOfTheDayProps) {
             cached = window.localStorage.getItem(storageKey);
           }
         } catch {
-          // ignore storage errors
         }
 
         if (cached) {
@@ -38,7 +36,6 @@ export default function QuoteOfTheDay({ apiBaseUrl }: QuoteOfTheDayProps) {
               return;
             }
           } catch {
-            // fall through to refetch on parse error
           }
         }
 
@@ -54,7 +51,6 @@ export default function QuoteOfTheDay({ apiBaseUrl }: QuoteOfTheDayProps) {
               window.localStorage.setItem(storageKey, JSON.stringify(normalized));
             }
           } catch {
-            // ignore storage errors
           }
         }
       } catch (e) {
@@ -105,3 +101,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+
