@@ -21,6 +21,7 @@ export default function RootLayout() {
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
           stored = window.localStorage.getItem('authToken');
         } else {
+          // simple fallback; for production prefer expo-secure-store
           stored = null;
         }
         if (stored) {
