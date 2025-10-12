@@ -8,17 +8,49 @@ export default function TracksSection() {
       <View style={styles.tracksRow}>
         <View style={styles.trackCard}>
           <Image
-            source={{ uri: "https://images.unsplash.com/photo-1506744038136-46273834b3fb" }}
+            source={require("../assets/Meditation.jpeg")}
             style={styles.trackImage}
           />
           <Text style={styles.trackTitle}>Yoga & Meditation</Text>
         </View>
         <View style={styles.trackCard}>
           <Image
-            source={{ uri: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438" }}
+            source={require("../assets/body.jpeg")}
             style={styles.trackImage}
           />
           <Text style={styles.trackTitle}>Mind & Body</Text>
+        </View>
+      </View>
+      <View style={styles.tracksRow}>
+        <View style={styles.trackCard}>
+          <Image
+           source={require("../assets/asmr.jpeg")}
+            style={styles.trackImage}
+          />
+          <Text style={styles.trackTitle}>ASMR Sounds</Text>
+        </View>
+        <View style={styles.trackCard}>
+          <Image
+           source={require("../assets/breathing.jpeg")}
+            style={styles.trackImage}
+          />
+          <Text style={styles.trackTitle}>Breathing Exercises</Text>
+        </View>
+      </View>
+      <View style={styles.tracksRow}>
+        <View style={styles.trackCard}>
+          <Image
+            source={require("../assets/focus.jpeg")}
+            style={styles.trackImage}
+          />
+          <Text style={styles.trackTitle}>Focus & Productivity Music</Text>
+        </View>
+        <View style={styles.trackCard}>
+          <Image
+            source={require("../assets/affirmation.jpeg")}
+            style={styles.trackImage}
+          />
+          <Text style={styles.trackTitle}>Affirmations & Positivity</Text>
         </View>
       </View>
     </View>
