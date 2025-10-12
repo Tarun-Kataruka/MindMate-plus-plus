@@ -61,6 +61,7 @@ const styles = StyleSheet.create({
   tracksBlock: {
     alignSelf: "stretch",
     marginHorizontal: 14,
+    marginVertical: 8,
   },
   tracksLabel: {
     fontSize: 16,
@@ -72,18 +73,24 @@ const styles = StyleSheet.create({
   tracksRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 16,
+    gap: 8,
   },
   trackCard: {
     backgroundColor: "#f5f5f5",
     borderRadius: 16,
     overflow: "hidden",
     width: 155,
-    marginHorizontal: 4,
     alignItems: "center",
-    elevation: 3,
+    elevation: 4,
     shadowColor: "#77C272",
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    marginBottom: 4,
   },
   trackImage: {
     width: 155,
@@ -91,11 +98,12 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
   trackTitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#388e3c",
-    fontWeight: "bold",
-    padding: 8,
+    fontWeight: "600",
+    padding: 10,
     textAlign: "center",
+    lineHeight: 18,
   },
 });
 
