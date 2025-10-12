@@ -1,57 +1,103 @@
 import React from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
 
 export default function TracksSection() {
+  const router = useRouter();
+
+  const handleTrackPress = (trackType: string) => {
+    switch (trackType) {
+      case 'yoga-meditation':
+        router.push('/tracks/yoga-meditation' as any);
+        break;
+      case 'mind-body':
+        router.push('/tracks/mind-body' as any);
+        break;
+      case 'asmr-sounds':
+        router.push('/tracks/asmr-sounds' as any);
+        break;
+      case 'breathing-exercises':
+        router.push('/tracks/breathing-exercises' as any);
+        break;
+      case 'focus-productivity':
+        router.push('/tracks/focus-productivity' as any);
+        break;
+      case 'affirmations-positivity':
+        router.push('/tracks/affirmations-positivity' as any);
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <View style={styles.tracksBlock}>
       <Text style={styles.tracksLabel}>TRACKS TO REFRESH YOUR MOOD!</Text>
       <View style={styles.tracksRow}>
-        <View style={styles.trackCard}>
+        <TouchableOpacity 
+          style={styles.trackCard} 
+          onPress={() => handleTrackPress('yoga-meditation')}
+        >
           <Image
             source={require("../assets/Meditation.jpeg")}
             style={styles.trackImage}
           />
           <Text style={styles.trackTitle}>Yoga & Meditation</Text>
-        </View>
-        <View style={styles.trackCard}>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.trackCard} 
+          onPress={() => handleTrackPress('mind-body')}
+        >
           <Image
             source={require("../assets/body.jpeg")}
             style={styles.trackImage}
           />
           <Text style={styles.trackTitle}>Mind & Body</Text>
-        </View>
+        </TouchableOpacity>
       </View>
       <View style={styles.tracksRow}>
-        <View style={styles.trackCard}>
+        <TouchableOpacity 
+          style={styles.trackCard} 
+          onPress={() => handleTrackPress('asmr-sounds')}
+        >
           <Image
            source={require("../assets/asmr.jpeg")}
             style={styles.trackImage}
           />
           <Text style={styles.trackTitle}>ASMR Sounds</Text>
-        </View>
-        <View style={styles.trackCard}>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.trackCard} 
+          onPress={() => handleTrackPress('breathing-exercises')}
+        >
           <Image
            source={require("../assets/breathing.jpeg")}
             style={styles.trackImage}
           />
           <Text style={styles.trackTitle}>Breathing Exercises</Text>
-        </View>
+        </TouchableOpacity>
       </View>
       <View style={styles.tracksRow}>
-        <View style={styles.trackCard}>
+        <TouchableOpacity 
+          style={styles.trackCard} 
+          onPress={() => handleTrackPress('focus-productivity')}
+        >
           <Image
             source={require("../assets/focus.jpeg")}
             style={styles.trackImage}
           />
           <Text style={styles.trackTitle}>Focus & Productivity Music</Text>
-        </View>
-        <View style={styles.trackCard}>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.trackCard} 
+          onPress={() => handleTrackPress('affirmations-positivity')}
+        >
           <Image
             source={require("../assets/affirmation.jpeg")}
             style={styles.trackImage}
           />
           <Text style={styles.trackTitle}>Affirmations & Positivity</Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
