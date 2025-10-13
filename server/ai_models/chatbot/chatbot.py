@@ -2,18 +2,14 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path=env_path)
 api_key = os.getenv("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
 
-if not api_key:
-    print("Error: GEMINI_API_KEY not found in environment variables!")
-    print("Please check your .env file.")
-    exit(1)
-
-genai.configure(api_key=api_key)
-print("API key loaded successfully")
-
-model = genai.GenerativeModel("gemini-2.5-flash")
+model = genai.GenerativeModel("gemini-1.5-flash") if api_key else None
 
 system_prompt = """
 You are MindMate++, a compassionate and emotionally intelligent mental wellness companion.
@@ -34,29 +30,35 @@ Guidelines:
 Your goal is to sound like a caring friend who helps users feel seen, supported, and a little lighter after talking.
 """
 
-print("🧘 Welcome to MindMate++ — your mental wellness companion 💬")
-print("Type 'exit' anytime to end the chat.\n")
 
-chat_history = []
-
-while True:
-    user_input = input("You: ").strip()
-    if user_input.lower() in ["exit", "quit", "bye"]:
-        print("MindMate++: Take care of yourself ❤️  Remember, small steps matter.\n")
-        break
-
+def generate_reply(user_input: str, history: list | None = None) -> str:
+    history = history or []
     prompt = system_prompt + "\n\nConversation:\n"
-    for msg in chat_history[-5:]:  # keep recent 5 exchanges
+    for msg in history[-5:]:
         prompt += f"User: {msg['user']}\nMindMate++: {msg['bot']}\n"
     prompt += f"User: {user_input}\nMindMate++:"
 
-    try:
-        response = model.generate_content(prompt)
-        reply = response.text.strip()
-        print("MindMate++:", reply, "\n")
+    if not model:
+        return "I’m here with you. Configure GEMINI_API_KEY to enable AI replies."
 
-        chat_history.append({"user": user_input, "bot": reply})
+    response = model.generate_content(prompt)
+    return (getattr(response, 'text', None) or '').strip()
 
-    except Exception as e:
-        print(f"MindMate++: Don't worry I'm here but right now I'm having trouble responding.")
+
+if __name__ == '__main__':
+    print("Welcome to MindMate++ — your mental wellness companion")
+    print("Type 'exit' anytime to end the chat.\n")
+
+    chat_history = []
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() in ["exit", "quit", "bye"]:
+            print("MindMate++: Take care of yourself ❤️  Remember, small steps matter.\n")
+            break
+        try:
+            reply = generate_reply(user_input, chat_history)
+            print("MindMate++:", reply, "\n")
+            chat_history.append({"user": user_input, "bot": reply})
+        except Exception:
+            print("MindMate++: Don't worry, I'm having trouble responding right now.")
         

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 
 type Message = {
   id: string;
@@ -13,19 +13,40 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList<Message>>(null);
+  const [loading, setLoading] = useState(false);
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
     if (!text) return;
     const userMsg: Message = { id: String(Date.now()), role: 'user', text };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    setLoading(true);
 
-    setTimeout(() => {
-      const reply: Message = { id: String(Date.now() + 1), role: 'bot', text: 'Thanks for sharing. Tell me more.' };
+    try {
+      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const res = await fetch(`${baseUrl}/api/chatbot/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({} as any));
+        throw new Error(err?.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const replyText = (data?.reply as string) || "I'm here with you. Could you share a bit more?";
+      const reply: Message = { id: String(Date.now() + 1), role: 'bot', text: replyText };
       setMessages(prev => [...prev, reply]);
       listRef.current?.scrollToEnd({ animated: true });
-    }, 300);
+    } catch (e: any) {
+      const errMsg = typeof e?.message === 'string' ? e.message : 'Something went wrong. Please try again.';
+      const reply: Message = { id: String(Date.now() + 1), role: 'bot', text: `Oops—${errMsg}` };
+      setMessages(prev => [...prev, reply]);
+      listRef.current?.scrollToEnd({ animated: true });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderItem = ({ item }: { item: Message }) => (
@@ -53,6 +74,11 @@ export default function Chat() {
           onSubmitEditing={send}
           returnKeyType="send"
         />
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator color="#252525" />
+          </View>
+        ) : null}
         <TouchableOpacity onPress={send} style={styles.sendBtn}>
           <Text style={styles.sendText}>Send</Text>
         </TouchableOpacity>
@@ -111,6 +137,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 10,
+  },
+  loadingWrap: {
+    marginRight: 8,
   },
   sendText: {
     color: '#fff',
