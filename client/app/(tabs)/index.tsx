@@ -12,24 +12,28 @@ import { router } from "expo-router";
 import TracksSection from "../../components/TracksSection";
 import { useFocusEffect } from "@react-navigation/native";
 
-const AVATAR_URL =
-  "https://img.icons8.com/ios-filled/100/000000/user-male-circle.png";
+const DEFAULT_AVATAR = "https://img.icons8.com/ios-filled/100/000000/user-male-circle.png";
 const BOT_GIF = require("../../assets/tink.gif");
 
 export default function HomeScreen() {
   const [firstName, setFirstName] = useState<string>("");
+  const [avatarUrl, setAvatarUrl] = useState<string>(DEFAULT_AVATAR);
+  const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || '').replace(/\/?$/, '/'));
 
   const fetchMe = useCallback(async () => {
     try {
       const token = (globalThis as any).authToken as string | undefined;
       if (!token) return;
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}api/auth/me`, {
+      const res = await fetch(`${API_BASE}api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (res.ok && data?.user?.name) {
-        const name = String(data.user.name);
-        setFirstName(name.split(" ")[0]);
+      if (res.ok && data?.user) {
+        if (data.user.name) {
+          const name = String(data.user.name);
+          setFirstName(name.split(" ")[0]);
+        }
+        if (data.user.avatarUrl) setAvatarUrl(String(data.user.avatarUrl));
       }
     } catch {
       // ignore
@@ -50,7 +54,9 @@ export default function HomeScreen() {
       <View style={styles.headerBg}>
         <Text style={styles.greeting}>Hello !</Text>
         <Text style={styles.name}>{firstName || "Friend"}</Text>
-        <Image source={{ uri: AVATAR_URL }} style={styles.avatar} />
+        <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push('/(tabs)/profile/profile')} activeOpacity={0.8}>
+          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.botSection}>
@@ -113,9 +119,11 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#fff",
     backgroundColor: "#f5f5f5",
+  },
+  avatarBtn: {
     position: "absolute",
-    top: 18,
-    right: 32,
+    top: 16,
+    right: 16,
   },
   botSection: {
     flexDirection: "row",

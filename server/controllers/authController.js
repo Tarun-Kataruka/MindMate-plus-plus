@@ -73,7 +73,7 @@ export const login = async (req, res) => {
 
 export const me = async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('name email age gender');
+    const user = await User.findById(req.userId).select('name email age gender phone concerns avatarUrl');
     if (!user) return res.status(404).json({ message: 'User not found' });
     return res.json({
       user: {
@@ -82,6 +82,44 @@ export const me = async (req, res) => {
         email: user.email,
         age: user.age,
         gender: user.gender,
+        phone: user.phone,
+        concerns: user.concerns || [],
+        avatarUrl: user.avatarUrl || null,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const updateMe = async (req, res) => {
+  try {
+    const { name, age, gender, phone, concerns, email, avatarUrl } = req.body || {};
+    const update = {};
+    if (name !== undefined) update.name = String(name);
+    if (email !== undefined) update.email = String(email).toLowerCase();
+    if (age !== undefined) {
+      const parsed = Number(age);
+      if (!Number.isNaN(parsed)) update.age = parsed;
+    }
+    if (gender !== undefined) update.gender = String(gender).toLowerCase();
+    if (phone !== undefined) update.phone = String(phone);
+    if (concerns !== undefined && Array.isArray(concerns)) update.concerns = concerns.map(String);
+    if (avatarUrl !== undefined) update.avatarUrl = String(avatarUrl);
+
+    const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('name email age gender phone concerns avatarUrl');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    return res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        age: user.age,
+        gender: user.gender,
+        phone: user.phone,
+        concerns: user.concerns || [],
+        avatarUrl: user.avatarUrl || null,
       },
     });
   } catch (err) {

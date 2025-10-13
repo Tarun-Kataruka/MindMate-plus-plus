@@ -14,6 +14,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [bootstrapped, setBootstrapped] = React.useState(false);
+  const [isAuthed, setIsAuthed] = React.useState<boolean>(false);
   React.useEffect(() => {
     const loadToken = async () => {
       try {
@@ -21,11 +22,31 @@ export default function RootLayout() {
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
           stored = window.localStorage.getItem('authToken');
         } else {
+          // simple fallback; for production prefer expo-secure-store
           stored = null;
         }
         if (stored) {
           // @ts-ignore
           (globalThis as any).authToken = stored;
+          // Verify token with backend; if invalid, clear and show auth screens
+          try {
+            const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || '').replace(/\/?$/, '/'));
+            const res = await fetch(`${API_BASE}api/auth/me`, { headers: { Authorization: `Bearer ${stored}` } });
+            if (res.ok) {
+              setIsAuthed(true);
+            } else {
+              if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.localStorage.removeItem('authToken');
+              }
+              // @ts-ignore
+              (globalThis as any).authToken = undefined;
+              setIsAuthed(false);
+            }
+          } catch {
+            setIsAuthed(false);
+          }
+        } else {
+          setIsAuthed(false);
         }
       } catch {
         // ignore
@@ -42,8 +63,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        {isAuthed ? (
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        ) : (
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        )}
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
