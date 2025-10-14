@@ -88,12 +88,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   container: {
-    padding: 4,
+    padding: 8,
     paddingBottom: 30,
   },
   image: {
     width: '100%',
-    height: 220,
+    height: 400,
     backgroundColor: '#ececec',
     marginBottom: 16,
   },

@@ -47,7 +47,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
   React.useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem('likedBlogIds');
+        const raw = await AsyncStorage.getItem("likedBlogIds");
         if (raw) {
           const arr: string[] = JSON.parse(raw);
           setLikedIds(new Set(arr));
@@ -60,7 +60,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
     try {
       const res = await fetch(`${baseUrl}/api/blogs`, {
         method: "POST",
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           author: form.author,
           title: form.title,
@@ -84,15 +84,20 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
     if (!id) return;
     if (likedIds.has(id)) return;
     try {
-      const res = await fetch(`${baseUrl}/api/blogs/${id}/like`, { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to like');
+      const res = await fetch(`${baseUrl}/api/blogs/${id}/like`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to like");
       const updated = await res.json();
       onLiked && onLiked(updated);
       const next = new Set(likedIds);
       next.add(id);
       setLikedIds(next);
       try {
-        await AsyncStorage.setItem('likedBlogIds', JSON.stringify(Array.from(next)));
+        await AsyncStorage.setItem(
+          "likedBlogIds",
+          JSON.stringify(Array.from(next))
+        );
       } catch {}
     } catch (e) {
       console.error(e);
@@ -108,7 +113,12 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
           <BlogCard
             {...item}
             baseUrl={baseUrl}
-            onPress={() => router.push({ pathname: '/blog/[id]', params: { id: (item._id || item.id) as string } })}
+            onPress={() =>
+              router.push({
+                pathname: "/blog/[id]",
+                params: { id: (item._id || item.id) as string },
+              })
+            }
             onPressLike={() => onLike(item._id || item.id)}
             liked={likedIds.has((item._id || item.id) as string)}
           />
@@ -161,11 +171,13 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
               autoCorrect={false}
             />
             {form.image ? (
+              <Image source={{ uri: form.image }} style={styles.imagePreview} />
+            ) : (
               <Image
-                source={{ uri: form.image }}
+                source={require("../../assets/breathing.jpeg")}
                 style={styles.imagePreview}
               />
-            ) : null}
+            )}
             <TextInput
               placeholder="Excerpt"
               style={[styles.input, { height: 90 }]}

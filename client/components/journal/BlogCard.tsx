@@ -16,34 +16,53 @@ export interface BlogCardProps {
   onPressLike?: () => void;
 }
 
-const BlogCard: React.FC<BlogCardProps> = ({ title, author, image, baseUrl, likes, liked, onPress, onPressLike }) => {
-  const resolvedImage = image
-    ? (image.startsWith('http://') || image.startsWith('https://')
-        ? image
-        : `${baseUrl ?? ''}${image}`)
-    : '';
+const BlogCard: React.FC<BlogCardProps> = ({
+  title,
+  author,
+  image,
+  baseUrl,
+  likes,
+  liked,
+  onPress,
+  onPressLike,
+}) => {
+  const resolvedImage =
+    image &&
+    (image.startsWith("http://") ||
+      image.startsWith("https://") ||
+      image.startsWith("/"))
+      ? { uri: image }
+      : image
+      ? { uri: `${baseUrl ?? ""}${image}` }
+      : require("../../assets/default.png"); 
 
   return (
-    <TouchableOpacity style={styles.blogCardRow} activeOpacity={0.8} onPress={onPress}>
-      {resolvedImage ? (
-        <Image source={{ uri: resolvedImage }} style={styles.cardImage} />
-      ) : (
-        <View style={[styles.cardImage, { backgroundColor: "#ececec" }]} />
-      )}
-
+    <TouchableOpacity
+      style={styles.blogCardRow}
+      activeOpacity={0.8}
+      onPress={onPress}
+    >
+      <Image source={resolvedImage} style={styles.cardImage} />
       <View style={styles.cardTextContainer}>
         <Text style={styles.cardTitle} numberOfLines={2}>
           {title}
         </Text>
         <Text style={styles.cardAuthor}>{author}</Text>
         <View style={styles.cardLikesRow}>
-          <TouchableOpacity onPress={onPressLike} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center' }} disabled={liked}>
+          <TouchableOpacity
+            onPress={onPressLike}
+            activeOpacity={0.7}
+            style={{ flexDirection: "row", alignItems: "center" }}
+            disabled={liked}
+          >
             {liked ? (
               <FontAwesome name="thumbs-up" size={18} color="#2e7d32" />
             ) : (
               <FontAwesome name="thumbs-o-up" size={18} color="#6b6b6b" />
             )}
-            <Text style={styles.cardLikesText}>{typeof likes === 'number' ? likes : 0} Likes</Text>
+            <Text style={styles.cardLikesText}>
+              {typeof likes === "number" ? likes : 0} Likes
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -99,5 +118,3 @@ const styles = StyleSheet.create({
     marginLeft: 7,
   },
 });
-
-
