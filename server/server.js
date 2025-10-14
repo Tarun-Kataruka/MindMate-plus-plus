@@ -27,9 +27,13 @@ connectDB();
 import authRoutes from './routes/authRoutes.js';
 import quoteRoutes from './routes/quoteRoutes.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
+import journalRoutes from './routes/journalRoutes.js';
+import blogRoutes from './routes/blogRoutes.js';
 app.use('/api/auth', authRoutes);
 app.use('/api/quotes', quoteRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/journals', journalRoutes);
+app.use('/api/blogs', blogRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

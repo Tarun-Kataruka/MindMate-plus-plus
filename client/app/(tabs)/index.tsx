@@ -38,7 +38,7 @@ export default function HomeScreen() {
     } catch {
       // ignore
     }
-  }, []);
+  }, [API_BASE]);
 
   useFocusEffect(
     useCallback(() => {

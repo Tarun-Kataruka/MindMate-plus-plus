@@ -31,6 +31,16 @@ export const Colors = {
   primary : '#0a7ea4',
   secondary : '#14b8ff',
   yellow : '#fcd34d',
+  // App-specific tokens
+  journalCardBg: '#E0F2E9', // slightly darker green than previous
+  journalAccent: '#558B2F',
+  journalSeparator: '#FFD600',
+  blogFabBg: '#FFEB3B',
+  blogFabText: '#333333',
+  journalHeaderBg: '#FFEB3B',
+  surfaceBg: '#F9F9F9',
+  neutralText: '#333333',
+  danger: '#e53935',
 };
 
 export const Fonts = Platform.select({
