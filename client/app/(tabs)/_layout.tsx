@@ -3,9 +3,9 @@ import React from "react";
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Platform } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function TabLayout() {
-
   const INACTIVE_COLOR = "rgba(255, 255, 255, 0.7)";
   const ACTIVE_COLOR = "#ffffff";
 
@@ -60,7 +60,7 @@ export default function TabLayout() {
         options={{
           title: "Fitness",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="checkmark.circle.fill" color={color} />
+            <MaterialCommunityIcons name="yoga" size={28} color={color} />
           ),
         }}
       />

@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
   },
   fabText: {
-    color: Colors.neutralText,
+    color: '#fff',
     fontSize: 32,
     fontWeight: '700',
   },

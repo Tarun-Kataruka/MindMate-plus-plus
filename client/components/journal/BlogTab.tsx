@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   fabText: {
-    color: Colors.blogFabText,
+    color: '#fff',
     fontSize: 28,
     lineHeight: 30,
     fontWeight: "700",
