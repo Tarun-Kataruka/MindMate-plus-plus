@@ -10,7 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Colors } from "@/constants/theme";
+import { AntDesign } from "@expo/vector-icons";
 
 interface BlogItem {
   _id?: string;
@@ -26,18 +28,25 @@ interface BlogTabProps {
   onCreated?: (created: any) => void;
 }
 
-const BlogCard: React.FC<BlogItem> = ({ title, author, image, excerpt }) => (
-  <View style={styles.blogCard}>
-    <Image source={{ uri: image }} style={styles.blogImage} />
-    <View style={styles.blogInfo}>
-      <Image
-        source={{ uri: "https://placehold.co/40x40/52528C/FFFFFF/png?text=M" }}
-        style={styles.blogAvatar}
-      />
-      <Text style={styles.blogAuthor}>{author}</Text>
+// --- BlogCard matching screenshot ---
+const BlogCard: React.FC<BlogItem> = ({ title, author, image }) => (
+  <View style={styles.blogCardRow}>
+    {image ? (
+      <Image source={{ uri: image }} style={styles.cardImage} />
+    ) : (
+      <View style={[styles.cardImage, { backgroundColor: "#ececec" }]} />
+    )}
+
+    <View style={styles.cardTextContainer}>
+      <Text style={styles.cardTitle} numberOfLines={2}>
+        {title}
+      </Text>
+      <Text style={styles.cardAuthor}>{author}</Text>
+      <View style={styles.cardLikesRow}>
+        <AntDesign name="like" size={17} color="#868686" />
+        <Text style={styles.cardLikesText}>421 Likes</Text>
+      </View>
     </View>
-    <Text style={styles.blogTitle}>{title}</Text>
-    <Text style={styles.blogExcerpt}>{excerpt}</Text>
   </View>
 );
 
@@ -46,23 +55,59 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated }) => {
   const [form, setForm] = useState<{
     author: string;
     title: string;
-    image: string;
     excerpt: string;
-  }>({ author: "", title: "", image: "", excerpt: "" });
+  }>({ author: "", title: "", excerpt: "" });
+
+  const [pickedImage, setPickedImage] = useState<string | null>(null);
   const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+
+  const pickImage = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      alert("Permission to access media library is required!");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 1,
+    });
+
+    // Expo SDK 49+
+    if (!result.canceled) {
+      if (result.assets && result.assets.length > 0) {
+        setPickedImage(result.assets[0].uri);
+      }
+    }
+  };
 
   const onSubmitCreate = async () => {
     try {
+      const formData = new FormData();
+      formData.append("author", form.author);
+      formData.append("title", form.title);
+      formData.append("excerpt", form.excerpt);
+      if (pickedImage) {
+        formData.append("image", {
+          uri: pickedImage,
+          name: "photo.jpg",
+          type: "image/jpg",
+        } as any);
+      }
+
       const res = await fetch(`${baseUrl}/api/blogs`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: formData,
       });
+
       if (!res.ok) throw new Error("Failed to create blog");
       const created = await res.json();
       onCreated && onCreated(created);
+
       setShowCreate(false);
-      setForm({ author: "", title: "", image: "", excerpt: "" });
+      setForm({ author: "", title: "", excerpt: "" });
+      setPickedImage(null);
     } catch (e) {
       console.error(e);
     }
@@ -86,6 +131,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated }) => {
       >
         <Text style={styles.fabText}>＋</Text>
       </TouchableOpacity>
+
       <Modal
         visible={showCreate}
         animationType="slide"
@@ -112,12 +158,19 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated }) => {
               value={form.title}
               onChangeText={(v) => setForm((f) => ({ ...f, title: v }))}
             />
-            <TextInput
-              placeholder="Image URL (optional)"
-              style={styles.input}
-              value={form.image}
-              onChangeText={(v) => setForm((f) => ({ ...f, image: v }))}
-            />
+            {/* Image picker button */}
+            <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>
+              <Text style={styles.imagePickerText}>
+                {pickedImage ? "Change Image" : "Pick an Image"}
+              </Text>
+            </TouchableOpacity>
+            {/* Preview picked image */}
+            {pickedImage ? (
+              <Image
+                source={{ uri: pickedImage }}
+                style={styles.imagePreview}
+              />
+            ) : null}
             <TextInput
               placeholder="Excerpt"
               style={[styles.input, { height: 90 }]}
@@ -142,48 +195,57 @@ const styles = StyleSheet.create({
     padding: 15,
     paddingBottom: 30,
   },
-  blogCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: "hidden",
-    elevation: 3,
-  },
-  blogImage: {
-    width: "100%",
-    height: 180,
-  },
-  blogInfo: {
+  // --- BlogCard styles matching screenshot ---
+  blogCardRow: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 17,
+    marginBottom: 16,
     padding: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  blogAvatar: {
-    width: 35,
-    height: 35,
-    borderRadius: 20,
-    marginRight: 10,
+  cardImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 15,
+    marginRight: 16,
+    backgroundColor: "#ececec",
   },
-  blogAuthor: {
-    fontSize: 15,
-    fontWeight: "600",
+  cardTextContainer: {
+    flex: 1,
+    justifyContent: "center",
   },
-  blogTitle: {
-    fontSize: 20,
+  cardTitle: {
+    fontSize: 16,
     fontWeight: "700",
-    paddingHorizontal: 10,
+    marginBottom: 2,
+    color: "#232323",
   },
-  blogExcerpt: {
-    fontSize: 14,
-    color: "#555",
-    padding: 10,
-    paddingTop: 5,
+  cardAuthor: {
+    fontSize: 13,
+    color: "#B0B0B0",
+    marginBottom: 5,
   },
+  cardLikesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  cardLikesText: {
+    fontSize: 13,
+    color: "#868686",
+    marginLeft: 7,
+  },
+  // --- FAB and modal styles ---
   fab: {
     position: "absolute",
     right: 16,
     bottom: 16,
-    backgroundColor: Colors.blogFabBg,
+    backgroundColor: "#77C272",
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -229,5 +291,23 @@ const styles = StyleSheet.create({
   submitText: {
     color: "#fff",
     fontWeight: "700",
+  },
+  imagePickerBtn: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    backgroundColor: "#2e7d32",
+    marginBottom: 10,
+  },
+  imagePickerText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  imagePreview: {
+    width: "100%",
+    height: 150,
+    marginBottom: 10,
+    borderRadius: 10,
   },
 });

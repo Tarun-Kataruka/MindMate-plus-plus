@@ -33,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/quotes', quoteRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/journals', journalRoutes);
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use('/api/blogs', blogRoutes);
 
 // Health check

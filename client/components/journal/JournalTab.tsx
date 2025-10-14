@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 24,
-    backgroundColor: Colors.blogFabBg,
+    backgroundColor: "#77C272",
     width: 58,
     height: 58,
     borderRadius: 29,

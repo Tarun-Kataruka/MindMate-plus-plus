@@ -12,7 +12,6 @@ export default function JournalsMainScreen() {
   const [blogs, setBlogs] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  // creation handled inside tabs now
 
   const tabs = useMemo(() => (['BLOGS', 'JOURNALS'] as TabKey[]), []);
 
@@ -96,7 +95,7 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    backgroundColor: '#7CB342',
+    backgroundColor: '#77C272',
   },
   tabButton: {
     flex: 1,
