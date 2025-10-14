@@ -1,9 +1,11 @@
 import express from 'express';
-import { getBlogs, createBlog, upload } from '../controllers/blogController.js';
+import { getBlogs, getBlogById, createBlog, upload, likeBlog } from '../controllers/blogController.js';
 
 const router = express.Router();
 
 router.get('/', getBlogs);
-router.post('/', upload.single('image'), createBlog);
+router.get('/:id', getBlogById);
+router.post('/', createBlog);
+router.post('/:id/like', likeBlog);
 
 export default router;

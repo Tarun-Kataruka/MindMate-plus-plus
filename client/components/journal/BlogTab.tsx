@@ -10,9 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
 import { Colors } from "@/constants/theme";
-import { AntDesign } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import BlogCard from "./BlogCard";
 
 interface BlogItem {
   _id?: string;
@@ -21,84 +22,51 @@ interface BlogItem {
   title: string;
   image: string;
   excerpt: string;
+  likes?: number;
 }
 
 interface BlogTabProps {
   data: BlogItem[];
   onCreated?: (created: any) => void;
+  onLiked?: (updated: any) => void;
 }
 
-// --- BlogCard matching screenshot ---
-const BlogCard: React.FC<BlogItem> = ({ title, author, image }) => (
-  <View style={styles.blogCardRow}>
-    {image ? (
-      <Image source={{ uri: image }} style={styles.cardImage} />
-    ) : (
-      <View style={[styles.cardImage, { backgroundColor: "#ececec" }]} />
-    )}
-
-    <View style={styles.cardTextContainer}>
-      <Text style={styles.cardTitle} numberOfLines={2}>
-        {title}
-      </Text>
-      <Text style={styles.cardAuthor}>{author}</Text>
-      <View style={styles.cardLikesRow}>
-        <AntDesign name="like" size={17} color="#868686" />
-        <Text style={styles.cardLikesText}>421 Likes</Text>
-      </View>
-    </View>
-  </View>
-);
-
-const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated }) => {
+const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<{
     author: string;
     title: string;
+    image: string;
     excerpt: string;
-  }>({ author: "", title: "", excerpt: "" });
+  }>({ author: "", title: "", image: "", excerpt: "" });
 
-  const [pickedImage, setPickedImage] = useState<string | null>(null);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+  const router = useRouter();
 
-  const pickImage = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      alert("Permission to access media library is required!");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-    });
-
-    // Expo SDK 49+
-    if (!result.canceled) {
-      if (result.assets && result.assets.length > 0) {
-        setPickedImage(result.assets[0].uri);
-      }
-    }
-  };
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('likedBlogIds');
+        if (raw) {
+          const arr: string[] = JSON.parse(raw);
+          setLikedIds(new Set(arr));
+        }
+      } catch {}
+    })();
+  }, []);
 
   const onSubmitCreate = async () => {
     try {
-      const formData = new FormData();
-      formData.append("author", form.author);
-      formData.append("title", form.title);
-      formData.append("excerpt", form.excerpt);
-      if (pickedImage) {
-        formData.append("image", {
-          uri: pickedImage,
-          name: "photo.jpg",
-          type: "image/jpg",
-        } as any);
-      }
-
       const res = await fetch(`${baseUrl}/api/blogs`, {
         method: "POST",
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          author: form.author,
+          title: form.title,
+          excerpt: form.excerpt,
+          image: form.image,
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to create blog");
@@ -106,8 +74,26 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated }) => {
       onCreated && onCreated(created);
 
       setShowCreate(false);
-      setForm({ author: "", title: "", excerpt: "" });
-      setPickedImage(null);
+      setForm({ author: "", title: "", image: "", excerpt: "" });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const onLike = async (id?: string) => {
+    if (!id) return;
+    if (likedIds.has(id)) return;
+    try {
+      const res = await fetch(`${baseUrl}/api/blogs/${id}/like`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to like');
+      const updated = await res.json();
+      onLiked && onLiked(updated);
+      const next = new Set(likedIds);
+      next.add(id);
+      setLikedIds(next);
+      try {
+        await AsyncStorage.setItem('likedBlogIds', JSON.stringify(Array.from(next)));
+      } catch {}
     } catch (e) {
       console.error(e);
     }
@@ -118,7 +104,15 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated }) => {
       <FlatList
         data={data}
         keyExtractor={(item) => (item._id || item.id) as string}
-        renderItem={({ item }) => <BlogCard {...item} />}
+        renderItem={({ item }) => (
+          <BlogCard
+            {...item}
+            baseUrl={baseUrl}
+            onPress={() => router.push({ pathname: '/blog/[id]', params: { id: (item._id || item.id) as string } })}
+            onPressLike={() => onLike(item._id || item.id)}
+            liked={likedIds.has((item._id || item.id) as string)}
+          />
+        )}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         overScrollMode="never"
@@ -158,16 +152,17 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated }) => {
               value={form.title}
               onChangeText={(v) => setForm((f) => ({ ...f, title: v }))}
             />
-            {/* Image picker button */}
-            <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>
-              <Text style={styles.imagePickerText}>
-                {pickedImage ? "Change Image" : "Pick an Image"}
-              </Text>
-            </TouchableOpacity>
-            {/* Preview picked image */}
-            {pickedImage ? (
+            <TextInput
+              placeholder="Image URL (https://...)"
+              style={styles.input}
+              value={form.image}
+              onChangeText={(v) => setForm((f) => ({ ...f, image: v }))}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {form.image ? (
               <Image
-                source={{ uri: pickedImage }}
+                source={{ uri: form.image }}
                 style={styles.imagePreview}
               />
             ) : null}
@@ -195,7 +190,6 @@ const styles = StyleSheet.create({
     padding: 15,
     paddingBottom: 30,
   },
-  // --- BlogCard styles matching screenshot ---
   blogCardRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -240,7 +234,6 @@ const styles = StyleSheet.create({
     color: "#868686",
     marginLeft: 7,
   },
-  // --- FAB and modal styles ---
   fab: {
     position: "absolute",
     right: 16,

@@ -48,6 +48,8 @@ export default function JournalsMainScreen() {
   const handleJournalCreated = (created: any) => setJournals((prev) => [created, ...prev]);
   const handleJournalDeleted = (id: string) => setJournals((prev) => prev.filter((j) => (j._id || j.id) !== id));
   const handleBlogCreated = (created: any) => setBlogs((prev) => [created, ...prev]);
+  const handleBlogLiked = (updated: any) =>
+    setBlogs((prev) => prev.map((b) => ((b._id || b.id) === (updated._id || updated.id) ? updated : b)));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,7 +83,7 @@ export default function JournalsMainScreen() {
       ) : activeTab === 'JOURNALS' ? (
         <JournalTab data={journals} onPressItem={(id) => console.log('View Journal:', id)} onCreated={handleJournalCreated} onDeleted={handleJournalDeleted} />
       ) : (
-        <BlogTab data={blogs} onCreated={handleBlogCreated} />
+        <BlogTab data={blogs} onCreated={handleBlogCreated} onLiked={handleBlogLiked} />
       )}
     </SafeAreaView>
   );
