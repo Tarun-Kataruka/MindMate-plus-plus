@@ -8,7 +8,7 @@ export default function SignupScreen() {
   const [state, setState] = useState({ name: '', email: '', password: '', confirmPassword: '', age: '', gender: 'other' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:4000/').replace(/\/?$/, '/'));
+  const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:5000/').replace(/\/?$/, '/'));
 
   const handleSignup = async () => {
     const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -43,7 +43,19 @@ export default function SignupScreen() {
         }
       );
 
-      const data = await res.json();
+      // Try to parse JSON, but fall back to text to avoid JSON parse crashes on non-JSON responses
+      let data: any = null;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { message: text };
+        }
+      }
       if (!res.ok) {
         Alert.alert('Error', data?.message || 'Failed to sign up');
         return;

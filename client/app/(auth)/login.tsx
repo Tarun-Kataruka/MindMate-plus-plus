@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 export default function LoginScreen() {
   const [state, setState] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:5000/').replace(/\/?$/, '/'));
 
   const showToast = (message: string) => {
     if (Platform.OS === 'android') {
@@ -32,13 +33,25 @@ export default function LoginScreen() {
     }
 
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}api/auth/login`, {
+      const res = await fetch(`${API_BASE}api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: state.email, password: state.password }),
       });
 
-      const data = await res.json();
+      // Try to parse JSON, but fall back to text to avoid JSON parse crashes on non-JSON responses
+      let data: any = null;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { message: text };
+        }
+      }
       if (res.status === 401) {
         showToast('Wrong email or password');
         return;
