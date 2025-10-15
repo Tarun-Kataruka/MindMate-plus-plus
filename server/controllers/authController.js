@@ -12,7 +12,7 @@ export const signup = async (req, res) => {
 
     if (age !== undefined) {
       const parsedAge = Number(age);
-      if (Number.isNaN(parsedAge) || parsedAge < 13 || parsedAge > 120) {
+      if (Number.isNaN(parsedAge) ) {
         return res.status(400).json({ message: 'Age must be a number between 13 and 120' });
       }
     }
@@ -44,6 +44,7 @@ export const signup = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
+    console.log(err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
