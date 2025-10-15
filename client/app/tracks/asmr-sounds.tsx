@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from '@/components/AudioPlayerProvider';
 
 interface Track {
   id: string;
@@ -13,56 +13,37 @@ interface Track {
 
 export default function BreathingExercisesPage() {
   const router = useRouter();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [playingTrack, setPlayingTrack] = useState<string | null>(null);
+  const { loadQueue, toggleFavorite, favorites } = useAudioPlayer();
 
   const tracks: Track[] = [
-    {
-      id: '1',
-      title: '4-7-8 Breathing',
-      duration: '5:00',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-    },
-    {
-      id: '2',
-      title: 'Box Breathing',
-      duration: '8:00',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3',
-    },
-    {
-      id: '3',
-      title: 'Deep Breathing',
-      duration: '10:00',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3',
-    },
-    {
-      id: '4',
-      title: 'Calming Breath',
-      duration: '6:00',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3',
-    },
+    { id: '1', title: 'Soft Whispering', duration: '8:05', url: '' },
+    { id: '2', title: 'Page Turning ASMR', duration: '6:50', url: '' },
+    { id: '3', title: 'Gentle Tapping', duration: '9:15', url: '' },
+    { id: '4', title: 'Hair Brushing Sounds', duration: '7:22', url: '' },
+    { id: '5', title: 'Plastic Crinkles', duration: '5:49', url: '' },
+    { id: '6', title: 'Keyboard Typing', duration: '10:12', url: '' },
+    { id: '7', title: 'Rain on Window', duration: '12:48', url: '' },
+    { id: '8', title: 'Fireplace Crackle', duration: '11:03', url: '' },
+    { id: '9', title: 'Soft Brush on Mic', duration: '7:58', url: '' },
+    { id: '10', title: 'Paper Wrinkling', duration: '6:31', url: '' },
   ];
 
-  const handlePlayPause = async (track: Track) => {
-    try {
-      if (playingTrack === track.id) {
-        if (sound) {
-          await sound.pauseAsync();
-          setPlayingTrack(null);
-        }
-      } else {
-        if (sound) {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        }
-        const { sound: newSound } = await Audio.Sound.createAsync({ uri: track.url });
-        setSound(newSound);
-        setPlayingTrack(track.id);
-        await newSound.playAsync();
-      }
-    } catch (error) {
-      console.log('Audio play error:', error);
-    }
+  const localSources = [
+    require('../../assets/asmrSounds/asmr-recording-from-august-28-2016.mp3'),
+    require('../../assets/asmrSounds/024340-autonomous-sensory-meridian-response-asmr-tapping-session.mp3'),
+    require('../../assets/asmrSounds/playing-with-a-ziplock-bag.mp3'),
+    require('../../assets/asmrSounds/microphone-picking-up-facial-hair-sounds-stereo-panned.mp3'),
+    require('../../assets/asmrSounds/sounds-of-sipping.mp3'),
+    require('../../assets/asmrSounds/cat-purring-sound-01.mp3'),
+    require('../../assets/asmrSounds/sound-of-drinking-water-with-ice-cubes.mp3'),
+    require('../../assets/asmrSounds/slicing-mango-1-on-a-plate.mp3'),
+    require('../../assets/asmrSounds/providing-food-to-a-cat.mp3'),
+    require('../../assets/asmrSounds/cascade-of-water.mp3'),
+  ];
+
+  const handlePlay = async (index: number) => {
+    const queue = tracks.map((t, i) => ({ id: t.id, title: t.title, duration: t.duration, source: localSources[i] }));
+    await loadQueue(queue as any, index);
   };
 
   return (
@@ -77,25 +58,27 @@ export default function BreathingExercisesPage() {
       </View>
 
       <ScrollView style={styles.content}>
+        <Image source={require('../../assets/asmr.jpeg')} style={styles.hero} resizeMode="cover" />
         <Text style={styles.sectionTitle}>Available Tracks</Text>
 
-        {tracks.map((track) => (
+        {tracks.map((track, idx) => (
           <View key={track.id} style={styles.trackItem}>
             <View style={styles.trackInfo}>
               <Text style={styles.trackTitle}>{track.title}</Text>
               <Text style={styles.trackDuration}>{track.duration}</Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={() => handlePlayPause(track)}
-            >
-              <Ionicons
-                name={playingTrack === track.id ? 'pause' : 'play'}
-                size={24}
-                color="#fff"
-              />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => toggleFavorite({ id: track.id, title: track.title, source: localSources[idx] })} style={[styles.iconBtn, { marginRight: 10 }]}>
+                <Ionicons name={favorites[track.id] ? 'heart' : 'heart-outline'} size={22} color={favorites[track.id] ? '#ff4d4f' : '#388e3c'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.controlButton}
+                onPress={() => handlePlay(idx)}
+              >
+                <Ionicons name='play' size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </ScrollView>
@@ -134,21 +117,27 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  hero: {
+    width: '100%',
+    height: 160,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#222',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   trackItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f3f7f5',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    elevation: 2,
+    marginBottom: 10,
+    elevation: 1,
     shadowColor: '#77C272',
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -175,4 +164,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconBtn: { padding: 6 },
 });

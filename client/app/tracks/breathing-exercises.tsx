@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from '@/components/AudioPlayerProvider';
 
 interface Track {
   id: string;
@@ -13,56 +13,37 @@ interface Track {
 
 export default function BreathingExercisesPage() {
   const router = useRouter();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [playingTrack, setPlayingTrack] = useState<string | null>(null);
+  const { state, loadQueue, toggle } = useAudioPlayer();
 
   const tracks: Track[] = [
-    {
-      id: '1',
-      title: '4-7-8 Breathing',
-      duration: '5:00',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-    },
-    {
-      id: '2',
-      title: 'Box Breathing',
-      duration: '8:00',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3',
-    },
-    {
-      id: '3',
-      title: 'Deep Breathing',
-      duration: '10:00',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3',
-    },
-    {
-      id: '4',
-      title: 'Calming Breath',
-      duration: '6:00',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3',
-    },
+    { id: '1', title: '3 Minute Breathing Space', duration: '3:00', url: '' },
+    { id: '2', title: 'Still Mind Breath Awareness', duration: '6:00', url: '' },
+    { id: '3', title: 'MARC 5 Minute Breathing', duration: '5:00', url: '' },
+    { id: '4', title: 'Free Mindfulness 10 Minute', duration: '10:00', url: '' },
+    { id: '5', title: 'Padraig Brief Mindfulness', duration: '4:00', url: '' },
+    { id: '6', title: 'Padraig 10 Minute Breath', duration: '10:00', url: '' },
+    { id: '7', title: 'Vidyamala Breathing Space', duration: '9:00', url: '' },
+    { id: '8', title: '3 Minute Sounds', duration: '3:00', url: '' },
+    { id: '9', title: 'Life Happens 5 Minute', duration: '5:00', url: '' },
+    { id: '10', title: 'Breathing Space Long', duration: '8:00', url: '' },
   ];
 
-  const handlePlayPause = async (track: Track) => {
-    try {
-      if (playingTrack === track.id) {
-        if (sound) {
-          await sound.pauseAsync();
-          setPlayingTrack(null);
-        }
-      } else {
-        if (sound) {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        }
-        const { sound: newSound } = await Audio.Sound.createAsync({ uri: track.url });
-        setSound(newSound);
-        setPlayingTrack(track.id);
-        await newSound.playAsync();
-      }
-    } catch (error) {
-      console.log('Audio play error:', error);
-    }
+  const sources = [
+    require('../../assets/breathingExercises/FreeMindfulness3MinuteBreathingSpace.mp3'),
+    require('../../assets/breathingExercises/StillMind6MinuteBreathAwareness.mp3'),
+    require('../../assets/breathingExercises/MARC5MinuteBreathing.mp3'),
+    require('../../assets/breathingExercises/FreeMindfulness10MinuteBreathing.mp3'),
+    require('../../assets/breathingExercises/PadraigBriefMindfulnessPractice.mp3'),
+    require('../../assets/breathingExercises/PadraigTenMinuteMindfulnessOfBreathing.mp3'),
+    require('../../assets/breathingExercises/VidyamalaBreathingSpace.mp3'),
+    require('../../assets/breathingExercises/FreeMindfulness3MinuteSounds.mp3'),
+    require('../../assets/breathingExercises/LifeHappens5MinuteBreathing.mp3'),
+    require('../../assets/breathingExercises/FreeMindfulness3MinuteBreathing.mp3'),
+  ];
+
+  const handlePlay = async (index: number) => {
+    const queue = tracks.map((t, i) => ({ id: t.id, title: t.title, duration: t.duration, source: sources[i] }));
+    await loadQueue(queue as any, index);
   };
 
   return (
@@ -77,9 +58,10 @@ export default function BreathingExercisesPage() {
       </View>
 
       <ScrollView style={styles.content}>
+        <Image source={require('../../assets/breathing.jpeg')} style={styles.hero} resizeMode="cover" />
         <Text style={styles.sectionTitle}>Available Tracks</Text>
 
-        {tracks.map((track) => (
+        {tracks.map((track, idx) => (
           <View key={track.id} style={styles.trackItem}>
             <View style={styles.trackInfo}>
               <Text style={styles.trackTitle}>{track.title}</Text>
@@ -88,13 +70,9 @@ export default function BreathingExercisesPage() {
 
             <TouchableOpacity
               style={styles.controlButton}
-              onPress={() => handlePlayPause(track)}
+              onPress={() => handlePlay(idx)}
             >
-              <Ionicons
-                name={playingTrack === track.id ? 'pause' : 'play'}
-                size={24}
-                color="#fff"
-              />
+              <Ionicons name='play' size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         ))}
@@ -134,21 +112,27 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  hero: {
+    width: '100%',
+    height: 160,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#222',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   trackItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f3f7f5',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    elevation: 2,
+    marginBottom: 10,
+    elevation: 1,
     shadowColor: '#77C272',
     shadowOpacity: 0.1,
     shadowRadius: 4,

@@ -1,76 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Audio } from 'expo-av';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAudioPlayer } from '@/components/AudioPlayerProvider';
 
 interface Track {
   id: string;
   title: string;
   duration: string;
-  file: any;
+  url: string;
 }
 
 export default function YogaMeditationPage() {
   const router = useRouter();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState<string | null>(null);
+  const { loadQueue } = useAudioPlayer();
 
   const tracks: Track[] = [
-    {
-      id: '1',
-      title: 'Peaceful Meditation',
-      duration: '10:00',
-      file: require('../../assets/meditation/meditation-music-409195.mp3'),
-    },
+    { id: '1', title: 'Meditation Lofi Yoga', duration: '4:01', url: '' },
+    { id: '2', title: 'Meditation Music', duration: '5:21', url: '' },
+    { id: '3', title: 'Relax Yoga Meditation', duration: '4:36', url: '' },
+    { id: '4', title: 'Relax Peaceful Yoga', duration: '3:40', url: '' },
+    { id: '5', title: 'Spring Breeze Meditation', duration: '6:05', url: '' },
+    { id: '6', title: 'Spring Breeze Meditation v2', duration: '6:05', url: '' },
+    { id: '7', title: 'Yoga', duration: '2:42', url: '' },
+    { id: '8', title: 'Yoga Meditation Relax', duration: '4:18', url: '' },
+    { id: '9', title: 'Yoga Relax Meditation', duration: '4:55', url: '' },
+    { id: '10', title: 'Yoga Relaxing Music', duration: '3:50', url: '' },
   ];
 
-  useEffect(() => {
-    return sound
-      ? () => {
-          sound.unloadAsync();
-        }
-      : undefined;
-  }, [sound]);
+  const sources = [
+    require('../../assets/yoga&meditation/meditation-lofi-yoga-relax-lofi-music-247404.mp3'),
+    require('../../assets/yoga&meditation/meditation-music-409195.mp3'),
+    require('../../assets/yoga&meditation/meditation-relax-yoga-music-381876.mp3'),
+    require('../../assets/yoga&meditation/relax-yoga-peaceful-meditation-background-music-247405.mp3'),
+    require('../../assets/yoga&meditation/spring-breeze-of-meditation-background-music-for-yoga-and-meditation-200225.mp3'),
+    require('../../assets/yoga&meditation/spring-breeze-of-meditation-background-music-for-yoga-and-meditation-200225 (1).mp3'),
+    require('../../assets/yoga&meditation/yoga-417222.mp3'),
+    require('../../assets/yoga&meditation/yoga-meditation-relax-music-359352.mp3'),
+    require('../../assets/yoga&meditation/yoga-relax-meditation-music-372011.mp3'),
+    require('../../assets/yoga&meditation/yoga-relaxing-yoga-music-413542.mp3'),
+  ];
 
-  const playSound = async (track: Track) => {
-    try {
-      if (sound) await sound.unloadAsync();
-
-      const { sound: newSound } = await Audio.Sound.createAsync(track.file);
-      setSound(newSound);
-      setCurrentTrack(track.id);
-      setIsPlaying(true);
-      await newSound.playAsync();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to play audio');
-      console.error('Error playing sound:', error);
-    }
-  };
-
-  const pauseSound = async () => {
-    try {
-      if (sound) {
-        await sound.pauseAsync();
-        setIsPlaying(false);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to pause audio');
-      console.error('Error pausing sound:', error);
-    }
-  };
-
-  const resumeSound = async () => {
-    try {
-      if (sound) {
-        await sound.playAsync();
-        setIsPlaying(true);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to resume audio');
-      console.error('Error resuming sound:', error);
-    }
+  const handlePlay = async (index: number) => {
+    const queue = tracks.map((t, i) => ({ id: t.id, title: t.title, duration: t.duration, source: sources[i] }));
+    await loadQueue(queue as any, index);
   };
 
   return (
@@ -85,30 +58,22 @@ export default function YogaMeditationPage() {
       </View>
 
       <ScrollView style={styles.content}>
+        <Image source={require('../../assets/yoga_main.jpg')} style={styles.hero} resizeMode="cover" />
         <Text style={styles.sectionTitle}>Available Tracks</Text>
 
-        {tracks.map((track) => (
+        {tracks.map((track, idx) => (
           <View key={track.id} style={styles.trackItem}>
             <View style={styles.trackInfo}>
               <Text style={styles.trackTitle}>{track.title}</Text>
               <Text style={styles.trackDuration}>{track.duration}</Text>
             </View>
 
-            <View style={styles.controls}>
-              {currentTrack === track.id && isPlaying ? (
-                <TouchableOpacity onPress={pauseSound}>
-                  <Ionicons name="pause-circle" size={36} color="#388e3c" />
-                </TouchableOpacity>
-              ) : currentTrack === track.id && !isPlaying ? (
-                <TouchableOpacity onPress={resumeSound}>
-                  <Ionicons name="play-circle" size={36} color="#388e3c" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={() => playSound(track)}>
-                  <Ionicons name="play-circle" size={36} color="#388e3c" />
-                </TouchableOpacity>
-              )}
-            </View>
+            <TouchableOpacity
+              style={styles.controls}
+              onPress={() => handlePlay(idx)}
+            >
+              <Ionicons name="play-circle" size={36} color="#388e3c" />
+            </TouchableOpacity>
           </View>
         ))}
       </ScrollView>
@@ -147,20 +112,26 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  hero: {
+    width: '100%',
+    height: 160,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#222',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   trackItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#f3f7f5',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     elevation: 1,
   },
   trackInfo: {
