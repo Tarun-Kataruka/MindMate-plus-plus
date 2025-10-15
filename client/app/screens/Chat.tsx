@@ -24,7 +24,7 @@ export default function Chat() {
     setLoading(true);
 
     try {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const baseUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
       const res = await fetch(`${baseUrl}/api/chatbot/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -36,12 +36,26 @@ export default function Chat() {
       }
       const data = await res.json();
       const replyText = (data?.reply as string) || "I'm here with you. Could you share a bit more?";
-      const reply: Message = { id: String(Date.now() + 1), role: 'bot', text: replyText };
+      const reply: Message = { 
+        id: String(Date.now() + 1), 
+        role: 'bot', 
+        text: replyText 
+      };
+      
+      // Log the response source for debugging
+      if (data.source) {
+        console.log(`Chat response from: ${data.source} (AI: ${data.ai_enabled || false})`);
+      }
+      
       setMessages(prev => [...prev, reply]);
       listRef.current?.scrollToEnd({ animated: true });
     } catch (e: any) {
       const errMsg = typeof e?.message === 'string' ? e.message : 'Something went wrong. Please try again.';
-      const reply: Message = { id: String(Date.now() + 1), role: 'bot', text: `Oops—${errMsg}` };
+      const reply: Message = { 
+        id: String(Date.now() + 1), 
+        role: 'bot', 
+        text: `I'm having trouble connecting right now, but I'm here with you. ${errMsg.includes('HTTP') ? 'Please try again in a moment.' : ''}` 
+      };
       setMessages(prev => [...prev, reply]);
       listRef.current?.scrollToEnd({ animated: true });
     } finally {
