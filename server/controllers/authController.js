@@ -73,7 +73,7 @@ export const login = async (req, res) => {
 
 export const me = async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('name email age gender phone concerns avatarUrl');
+    const user = await User.findById(req.userId).select('name email age gender phone emergencyContactName emergencyContactPhone concerns avatarUrl');
     if (!user) return res.status(404).json({ message: 'User not found' });
     return res.json({
       user: {
@@ -83,6 +83,8 @@ export const me = async (req, res) => {
         age: user.age,
         gender: user.gender,
         phone: user.phone,
+        emergencyContactName: user.emergencyContactName || null,
+        emergencyContactPhone: user.emergencyContactPhone || null,
         concerns: user.concerns || [],
         avatarUrl: user.avatarUrl || null,
       },
@@ -95,7 +97,7 @@ export const me = async (req, res) => {
 
 export const updateMe = async (req, res) => {
   try {
-    const { name, age, gender, phone, concerns, email, avatarUrl } = req.body || {};
+    const { name, age, gender, phone, concerns, email, avatarUrl, emergencyContactName, emergencyContactPhone } = req.body || {};
     const update = {};
     if (name !== undefined) update.name = String(name);
     if (email !== undefined) update.email = String(email).toLowerCase();
@@ -107,8 +109,10 @@ export const updateMe = async (req, res) => {
     if (phone !== undefined) update.phone = String(phone);
     if (concerns !== undefined && Array.isArray(concerns)) update.concerns = concerns.map(String);
     if (avatarUrl !== undefined) update.avatarUrl = String(avatarUrl);
+    if (emergencyContactName !== undefined) update.emergencyContactName = String(emergencyContactName);
+    if (emergencyContactPhone !== undefined) update.emergencyContactPhone = String(emergencyContactPhone);
 
-    const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('name email age gender phone concerns avatarUrl');
+    const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('name email age gender phone emergencyContactName emergencyContactPhone concerns avatarUrl');
     if (!user) return res.status(404).json({ message: 'User not found' });
     return res.json({
       user: {
@@ -118,6 +122,8 @@ export const updateMe = async (req, res) => {
         age: user.age,
         gender: user.gender,
         phone: user.phone,
+        emergencyContactName: user.emergencyContactName || null,
+        emergencyContactPhone: user.emergencyContactPhone || null,
         concerns: user.concerns || [],
         avatarUrl: user.avatarUrl || null,
       },

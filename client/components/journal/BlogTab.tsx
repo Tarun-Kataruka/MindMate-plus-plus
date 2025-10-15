@@ -11,7 +11,6 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Colors } from "@/constants/theme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import BlogCard from "./BlogCard";
 

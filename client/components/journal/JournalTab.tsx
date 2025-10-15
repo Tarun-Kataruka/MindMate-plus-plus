@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 24,
-    backgroundColor: "#77C272",
+    backgroundColor: Colors.journalHeaderBg,
     width: 58,
     height: 58,
     borderRadius: 29,
