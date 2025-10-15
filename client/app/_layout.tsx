@@ -3,7 +3,10 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AudioPlayerProvider } from '@/components/AudioPlayerProvider';
+import DraggableMiniPlayer from '@/components/DraggableMiniPlayer';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -62,13 +65,20 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        {isAuthed ? (
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        ) : (
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        )}
-      </Stack>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AudioPlayerProvider>
+          <View style={{ flex: 1 }}>
+            <Stack>
+              {isAuthed ? (
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              ) : (
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              )}
+            </Stack>
+            <DraggableMiniPlayer />
+          </View>
+        </AudioPlayerProvider>
+      </GestureHandlerRootView>
       <StatusBar style="auto" />
     </ThemeProvider>
   );

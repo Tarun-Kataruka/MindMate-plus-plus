@@ -7,6 +7,9 @@ export default function TracksSection() {
 
   const handleTrackPress = (trackType: string) => {
     switch (trackType) {
+      case 'favorites':
+        router.push('/tracks/favorites' as any);
+        break;
       case 'yoga-meditation':
         router.push('/tracks/yoga-meditation' as any);
         break;
@@ -33,6 +36,22 @@ export default function TracksSection() {
   return (
     <View style={styles.tracksBlock}>
       <Text style={styles.tracksLabel}>TRACKS TO REFRESH YOUR MOOD!</Text>
+      <View style={styles.tracksRow}>
+        <TouchableOpacity 
+          style={styles.trackCard} 
+          onPress={() => handleTrackPress('favorites')}
+        >
+          <Image
+            source={require("../assets/giphy.gif")}
+            style={styles.trackImage}
+          />
+          <Text style={styles.trackTitle}>Favorites</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.trackCard, { opacity: 0 }]} disabled>
+          <Image source={require('../assets/default.png')} style={styles.trackImage} />
+          <Text style={styles.trackTitle}> </Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.tracksRow}>
         <TouchableOpacity 
           style={styles.trackCard} 
