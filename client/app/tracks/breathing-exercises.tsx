@@ -13,7 +13,7 @@ interface Track {
 
 export default function BreathingExercisesPage() {
   const router = useRouter();
-  const { state, loadQueue, toggle } = useAudioPlayer();
+  const { state, loadQueue, toggleFavorite, favorites } = useAudioPlayer();
 
   const tracks: Track[] = [
     { id: '1', title: '3 Minute Breathing Space', duration: '3:00', url: '' },
@@ -67,13 +67,14 @@ export default function BreathingExercisesPage() {
               <Text style={styles.trackTitle}>{track.title}</Text>
               <Text style={styles.trackDuration}>{track.duration}</Text>
             </View>
-
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={() => handlePlay(idx)}
-            >
-              <Ionicons name='play' size={24} color="#fff" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => toggleFavorite({ id: track.id, title: track.title, source: sources[idx] })} style={{ padding: 6, marginRight: 10 }}>
+                <Ionicons name={favorites[track.id] ? 'heart' : 'heart-outline'} size={22} color={favorites[track.id] ? '#ff4d4f' : '#388e3c'} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.controlButton} onPress={() => handlePlay(idx)}>
+                <Ionicons name='play' size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </ScrollView>

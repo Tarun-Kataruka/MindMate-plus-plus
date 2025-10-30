@@ -13,7 +13,7 @@ interface Track {
 
 export default function YogaMeditationPage() {
   const router = useRouter();
-  const { loadQueue } = useAudioPlayer();
+  const { loadQueue, toggleFavorite, favorites } = useAudioPlayer();
 
   const tracks: Track[] = [
     { id: '1', title: 'Meditation Lofi Yoga', duration: '4:01', url: '' },
@@ -67,13 +67,14 @@ export default function YogaMeditationPage() {
               <Text style={styles.trackTitle}>{track.title}</Text>
               <Text style={styles.trackDuration}>{track.duration}</Text>
             </View>
-
-            <TouchableOpacity
-              style={styles.controls}
-              onPress={() => handlePlay(idx)}
-            >
-              <Ionicons name="play-circle" size={36} color="#388e3c" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => toggleFavorite({ id: track.id, title: track.title, source: sources[idx] })} style={{ padding: 6, marginRight: 10 }}>
+                <Ionicons name={favorites[track.id] ? 'heart' : 'heart-outline'} size={22} color={favorites[track.id] ? '#ff4d4f' : '#388e3c'} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.controls} onPress={() => handlePlay(idx)}>
+                <Ionicons name="play-circle" size={36} color="#388e3c" />
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </ScrollView>

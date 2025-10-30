@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  Platform,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
@@ -222,6 +223,26 @@ export function ProfileScreenContent() {
           ))}
         </View>
       </View>
+
+      <TouchableOpacity
+        style={{
+          backgroundColor: Colors.secondary,
+          margin: 20,
+          paddingVertical: 14,
+          borderRadius: 10,
+          alignItems: 'center',
+        }}
+        onPress={() => {
+          // Remove token from memory and storage, then redirect
+          if (typeof window !== 'undefined' && Platform.OS === 'web') {
+            window.localStorage.removeItem('authToken');
+          }
+          (globalThis as any).authToken = undefined;
+          router.replace('/(auth)/login');
+        }}
+      >
+        <Text style={{ color: Colors.white, fontWeight: 'bold', fontSize: 16 }}>Logout</Text>
+      </TouchableOpacity>
 
       <View style={{ height: 60 }} />
     </ScrollView>
