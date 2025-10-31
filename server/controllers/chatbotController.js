@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import ChatMessage from '../models/ChatMessage.js';
 
 export async function getChatbotReply(req, res) {
   console.log('getChatbotReply function called');
@@ -39,7 +40,17 @@ export async function getChatbotReply(req, res) {
       if (flaskResponse.ok) {
         const data = await flaskResponse.json();
         console.log(`Flask response received (${data.source || 'unknown'}): "${data.reply}"`);
-        return res.json({ 
+        // Persist chat messages if user is authenticated
+        if (req.userId) {
+          try {
+            const userMood = inferMoodFromText(message);
+            await ChatMessage.create({ userId: req.userId, role: 'user', content: message.trim(), mood: userMood });
+            await ChatMessage.create({ userId: req.userId, role: 'assistant', content: data.reply, mood: 'neutral' });
+          } catch (persistErr) {
+            console.error('Failed to persist chat messages:', persistErr?.message);
+          }
+        }
+        return res.json({
           reply: data.reply,
           source: data.source || 'flask',
           ai_enabled: data.source === 'ai'
@@ -59,8 +70,18 @@ export async function getChatbotReply(req, res) {
       // Fallback to simple responses if Flask is unavailable
       const fallbackReply = getFallbackReply(message);
       console.log(`🔄 Using Node.js fallback: "${fallbackReply}"`);
-      
-      return res.json({ 
+      // Persist chat messages if user is authenticated
+      if (req.userId) {
+        try {
+          const userMood = inferMoodFromText(message);
+          await ChatMessage.create({ userId: req.userId, role: 'user', content: message.trim(), mood: userMood });
+          await ChatMessage.create({ userId: req.userId, role: 'assistant', content: fallbackReply, mood: 'neutral' });
+        } catch (persistErr) {
+          console.error('Failed to persist chat messages (fallback):', persistErr?.message);
+        }
+      }
+
+      return res.json({
         reply: fallbackReply,
         source: 'node_fallback',
         ai_enabled: false,
@@ -110,4 +131,62 @@ function getFallbackReply(userText) {
   
   // General supportive response
   return "I'm here to listen. What would you like to talk about today?";
+}
+
+// Simple keyword-based mood inference for analytics; not clinical-grade.
+function inferMoodFromText(text) {
+  const t = String(text || '').toLowerCase();
+  if (!t.trim()) return 'unknown';
+  if (/(anxious|anxiety|nervous|panic)/.test(t)) return 'anxious';
+  if (/(sad|down|upset|lonely|depressed|unhappy)/.test(t)) return 'sad';
+  if (/(angry|frustrated|mad|irritated|annoyed|furious)/.test(t)) return 'angry';
+  if (/(stressed|overwhelmed|pressure|burned out|burnt out)/.test(t)) return 'stressed';
+  if (/(tired|exhausted|drained|sleepy|fatigued)/.test(t)) return 'tired';
+  if (/(great|good|happy|calm|relaxed|okay|fine)/.test(t)) return 'positive';
+  return 'neutral';
+}
+
+// GET /api/chatbot/history (auth required): return last 7 days chat in ascending time
+export async function getChatHistory(req, res) {
+  try {
+    if (!req.userId) return res.status(401).json({ message: 'Unauthorized' });
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const docs = await ChatMessage.find({ userId: req.userId, createdAt: { $gte: since } })
+      .sort({ createdAt: 1 })
+      .lean();
+    return res.json({ messages: docs.map(d => ({ id: d._id, role: d.role, text: d.content, mood: d.mood, createdAt: d.createdAt })) });
+  } catch (err) {
+    console.error('getChatHistory error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+// GET /api/chatbot/analytics (auth required): basic mood counts and daily totals
+export async function getChatAnalytics(req, res) {
+  try {
+    if (!req.userId) return res.status(401).json({ message: 'Unauthorized' });
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const [moodCounts, dailyCounts] = await Promise.all([
+      ChatMessage.aggregate([
+        { $match: { userId: new ChatMessage.db.Types.ObjectId(req.userId), role: 'user', createdAt: { $gte: since } } },
+        { $group: { _id: '$mood', count: { $sum: 1 } } },
+      ]),
+      ChatMessage.aggregate([
+        { $match: { userId: new ChatMessage.db.Types.ObjectId(req.userId), createdAt: { $gte: since } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, messages: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    const moodMap = {};
+    for (const m of moodCounts) moodMap[m._id || 'unknown'] = m.count;
+    return res.json({
+      rangeStart: since,
+      moods: moodMap,
+      daily: dailyCounts.map(d => ({ date: d._id, messages: d.messages })),
+    });
+  } catch (err) {
+    console.error('getChatAnalytics error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 }

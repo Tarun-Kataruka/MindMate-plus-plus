@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 
 type Message = {
@@ -14,6 +14,61 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList<Message>>(null);
   const [loading, setLoading] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [historyByDate, setHistoryByDate] = useState<Record<string, Message[]>>({});
+  const [selectedDateKey, setSelectedDateKey] = useState<string>('');
+
+  const dateKeyOf = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  useEffect(() => {
+    const groupByDate = (serverMessages: any[]): Record<string, Message[]> => {
+      const grouped: Record<string, Message[]> = {};
+      for (const m of serverMessages) {
+        const createdAt = m.createdAt ? new Date(m.createdAt) : new Date();
+        const key = dateKeyOf(createdAt);
+        const role: 'user' | 'bot' = m.role === 'assistant' ? 'bot' : 'user';
+        const msg: Message = {
+          id: String(m.id || m._id || `${m.createdAt}-${m.role}`),
+          role,
+          text: String(m.text || m.content || ''),
+        };
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(msg);
+      }
+      // Ensure chronological order within a day is preserved by server sort; fallback no-op
+      return grouped;
+    };
+    const loadHistory = async () => {
+      try {
+        const token = (globalThis as any).authToken as string | undefined;
+        if (!token) return;
+        const baseUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
+        const res = await fetch(`${baseUrl}/api/chatbot/history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const history = Array.isArray(data?.messages) ? data.messages : [];
+        const grouped = groupByDate(history);
+        setHistoryByDate(grouped);
+        const todayKey = dateKeyOf(new Date());
+        const firstKey = grouped[todayKey] ? todayKey : Object.keys(grouped).sort().pop();
+        if (firstKey) {
+          setSelectedDateKey(firstKey);
+          setMessages(grouped[firstKey]);
+          setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 0);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadHistory();
+  }, []);
 
   const send = async () => {
     const text = input.trim();
@@ -25,9 +80,10 @@ export default function Chat() {
 
     try {
       const baseUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
+      const token = (globalThis as any).authToken as string | undefined;
       const res = await fetch(`${baseUrl}/api/chatbot/reply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ message: text }),
       });
       if (!res.ok) {
@@ -71,6 +127,13 @@ export default function Chat() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.menuBtn} onPress={() => setDrawerOpen(v => !v)}>
+          <Text style={styles.menuIcon}>☰</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Mate</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <FlatList
         ref={listRef}
         data={messages}
@@ -79,6 +142,31 @@ export default function Chat() {
         contentContainerStyle={styles.listContent}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
       />
+      {drawerOpen ? (
+        <View style={styles.drawer}>
+          <Text style={styles.drawerTitle}>History</Text>
+          <FlatList
+            data={Object.keys(historyByDate).sort()}
+            keyExtractor={(k) => k}
+            renderItem={({ item }) => {
+              const isSelected = item === selectedDateKey;
+              return (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedDateKey(item);
+                    setMessages(historyByDate[item] || []);
+                    setDrawerOpen(false);
+                    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 0);
+                  }}
+                  style={[styles.drawerItem, isSelected ? styles.drawerItemActive : null]}
+                >
+                  <Text style={[styles.drawerItemText, isSelected ? styles.drawerItemTextActive : null]}>{item}</Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      ) : null}
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
@@ -105,6 +193,30 @@ const styles = StyleSheet.create({
   listContent: {
     paddingVertical: 16,
     paddingHorizontal: 12,
+  },
+  header: {
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eaeaea',
+    backgroundColor: '#fff',
+  },
+  menuBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  menuIcon: {
+    fontSize: 20,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   bubble: {
     maxWidth: '80%',
@@ -158,6 +270,41 @@ const styles = StyleSheet.create({
   sendText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  drawer: {
+    position: 'absolute',
+    top: 48,
+    bottom: 60,
+    left: 0,
+    width: 260,
+    backgroundColor: '#ffffff',
+    borderRightWidth: 1,
+    borderRightColor: '#eaeaea',
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  drawerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  drawerItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  drawerItemActive: {
+    backgroundColor: '#f4f4f4',
+  },
+  drawerItemText: {
+    fontSize: 14,
+    color: '#222',
+  },
+  drawerItemTextActive: {
+    fontWeight: '700',
   },
 });
 
