@@ -33,6 +33,7 @@ import chatbotRoutes from './routes/chatbotRoutes.js';
 import journalRoutes from './routes/journalRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import googleRoutes from './routes/googleRoutes.js';
+import calendarRoutes from './routes/calendarRoutes.js';
 import plannerRoutes from './routes/plannerRoutes.js';
 app.use('/api/auth', authRoutes);
 app.use('/api/quotes', quoteRoutes);
@@ -41,6 +42,7 @@ app.use('/api/journals', journalRoutes);
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use('/api/blogs', blogRoutes);
 app.use('/api/google', googleRoutes);
+app.use('/api/v1/calendar', calendarRoutes);
 app.use('/api/planner', plannerRoutes);
 
 // Health check
