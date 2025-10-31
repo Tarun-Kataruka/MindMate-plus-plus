@@ -41,6 +41,7 @@ export const Colors = {
   surfaceBg: '#F9F9F9',
   neutralText: '#333333',
   danger: '#e53935',
+  lightGrey: '#E0E0E0',
 };
 
 export const Fonts = Platform.select({

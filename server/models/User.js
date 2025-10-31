@@ -13,6 +13,13 @@ const userSchema = new mongoose.Schema(
     emergencyContactPhone: { type: String, trim: true },
     concerns: { type: [String], default: [] },
     avatarUrl: { type: String, trim: true },
+    google: {
+      refreshToken: { type: String },
+      accessToken: { type: String },
+      tokenExpiry: { type: Date },
+      scope: { type: String },
+      email: { type: String },
+    },
   },
   { timestamps: true }
 );

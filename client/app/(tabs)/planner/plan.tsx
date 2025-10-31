@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
-import * as Google from 'expo-auth-session/providers/google';
+import * as Linking from 'expo-linking';
 
 type PlanItem = { title: string; start: string | Date; end: string | Date; subjectId?: string };
 
@@ -11,19 +11,12 @@ export default function PlanScreen() {
   const router = useRouter();
   const [items, setItems] = React.useState<PlanItem[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
-  const [connected, setConnected] = React.useState<boolean>(false);
+  const [connected] = React.useState<boolean>(false);
   const [syncing, setSyncing] = React.useState<boolean>(false);
   const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
   const token = (globalThis as any).authToken as string | undefined;
   const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
-  const redirectUri = typeof window !== 'undefined' ? window.location.origin : undefined;
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: clientId || '',
-    scopes: ['https://www.googleapis.com/auth/calendar'],
-    redirectUri,
-    responseType: 'token',
-    extraParams: { prompt: 'consent', include_granted_scopes: 'true' },
-  });
+  const redirectUri = process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI as string | undefined;
 
   React.useEffect(() => {
     (async () => {
@@ -36,7 +29,7 @@ export default function PlanScreen() {
       } catch {}
       finally { setLoading(false); }
     })();
-  }, []);
+  }, [baseUrl, token]);
 
   const grouped = React.useMemo(() => {
     const map: Record<string, PlanItem[]> = {};
@@ -53,30 +46,18 @@ export default function PlanScreen() {
     try {
       if (authInFlight) return;
       setAuthInFlight(true);
-      await promptAsync();
+      const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events');
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${encodeURIComponent(clientId || '')}&redirect_uri=${encodeURIComponent(redirectUri || '')}&scope=${scope}&access_type=offline&prompt=consent`;
+      if (Platform.OS === 'web') {
+        window.location.href = authUrl;
+      } else {
+        await Linking.openURL(authUrl);
+      }
     } catch {}
     finally { setAuthInFlight(false); }
   };
 
-  React.useEffect(() => {
-    // @ts-ignore
-    const accessToken = response?.params?.access_token as string | undefined;
-    if (response?.type === 'success' && accessToken) {
-      (async () => {
-        const resp = await fetch(`${baseUrl}/api/planner/google/token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ accessToken }),
-        });
-        if (resp.ok) {
-          setConnected(true);
-          Alert.alert('Connected', 'Google Calendar connected successfully.');
-        } else {
-          Alert.alert('Error', 'Failed to save Google token.');
-        }
-      })();
-    }
-  }, [response]);
+  // After OAuth completes, the callback screen will exchange code and redirect back
 
   const pushPlan = async () => {
     try {
