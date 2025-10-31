@@ -2,12 +2,8 @@ import fetch from 'node-fetch';
 import ChatMessage from '../models/ChatMessage.js';
 
 export async function getChatbotReply(req, res) {
-  console.log('getChatbotReply function called');
-  console.log('Request body:', req.body);
-  
   try {
     const { message } = req.body || {};
-    
     if (!message || typeof message !== 'string' || !message.trim()) {
       console.log('Invalid message:', message);
       return res.status(400).json({ 
@@ -16,15 +12,11 @@ export async function getChatbotReply(req, res) {
     }
 
     const flaskUrl = process.env.FLASK_CHATBOT_URL || 'http://localhost:5001';
-    console.log('Flask URL:', flaskUrl);
-    console.log(`Forwarding message to Flask chatbot: "${message}"`);
     
     try {
       // Try to communicate with Flask service
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-      console.log('Making fetch request to Flask...');
       const flaskResponse = await fetch(`${flaskUrl}/chat`, {
         method: 'POST',
         headers: {
@@ -33,14 +25,10 @@ export async function getChatbotReply(req, res) {
         body: JSON.stringify({ message: message.trim() }),
         signal: controller.signal,
       });
-
-      console.log('Flask response status:', flaskResponse.status);
       clearTimeout(timeoutId);
 
       if (flaskResponse.ok) {
         const data = await flaskResponse.json();
-        console.log(`Flask response received (${data.source || 'unknown'}): "${data.reply}"`);
-        // Persist chat messages if user is authenticated
         if (req.userId) {
           try {
             const userMood = inferMoodFromText(message);
@@ -70,7 +58,6 @@ export async function getChatbotReply(req, res) {
       // Fallback to simple responses if Flask is unavailable
       const fallbackReply = getFallbackReply(message);
       console.log(`🔄 Using Node.js fallback: "${fallbackReply}"`);
-      // Persist chat messages if user is authenticated
       if (req.userId) {
         try {
           const userMood = inferMoodFromText(message);
