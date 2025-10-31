@@ -3,7 +3,7 @@ import React from "react";
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Platform } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function TabLayout() {
   const INACTIVE_COLOR = "rgba(255, 255, 255, 0.7)";
@@ -55,15 +55,19 @@ export default function TabLayout() {
           ),
         }}
       />
+      {/* Planner tab (visible) */}
       <Tabs.Screen
-        name="fitness/fitness"
+        name="planner/academic"
         options={{
-          title: "Fitness",
+          title: "Planner",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="yoga" size={28} color={color} />
+            <Ionicons name="calendar" size={28} color={color} />
           ),
         }}
       />
+      {/* Hidden planner screens */}
+      <Tabs.Screen name="planner/prepare" options={{ href: null, title: "Prepare" }} />
+      <Tabs.Screen name="planner/plan" options={{ href: null, title: "Plan" }} />
       {/* Hidden screens */}
       <Tabs.Screen
         name="profile/profile"
