@@ -17,16 +17,16 @@ load_dotenv(dotenv_path=env_path)
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    print("⚠️  GEMINI_API_KEY not found — running in fallback mode.")
+    print("GEMINI_API_KEY not found — running in fallback mode.")
     model = None
 else:
     try:
         genai.configure(api_key=api_key.strip())
-        model_name = "gemini-2.0-flash-lite"
+        model_name = "gemini-2.5-flash"
         model = genai.GenerativeModel(model_name)
-        print(f"✅ Gemini model '{model_name}' initialized successfully.")
+        print(f" Gemini model '{model_name}' initialized successfully.")
     except Exception as e:
-        print(f"❌ Error initializing Gemini model: {e}")
+        print(f"Error initializing Gemini model: {e}")
         model = None
 
 # Initialize Flask app
@@ -40,15 +40,8 @@ CORS(app, origins=[
 
 SYSTEM_PROMPT = """
 You are MindMate++, a warm, empathetic, and encouraging mental wellness friend.
-
-Your goal is to help the user feel heard and supported through friendly, non-clinical conversation.
-
-Guidelines:
-- Tone: gentle, friendly, and reassuring.
-- Responses: short and natural, like talking to a close friend.
-- Ask open-ended questions to invite sharing.
-- Validate feelings (e.g., “That sounds really tough.”)
-- Never give medical or diagnostic advice.
+also keep the answers short and convesational.
+also keep in mind you are interacting to a person living in india
 """
 
 def fallback_reply(user_text):
@@ -73,7 +66,7 @@ def fallback_reply(user_text):
 @app.route("/")
 def home():
     return jsonify({
-        "message": "🧘 MindMate++ Chatbot API is running!",
+        "message": "MindMate++ Chatbot API is running!",
         "status": "ok",
         "version": "1.0.0",
         "ai_enabled": model is not None,
@@ -104,7 +97,7 @@ def chat():
                 if hasattr(response, "text") and response.text:
                     return jsonify({"reply": response.text.strip(), "source": "ai"})
             except Exception as e:
-                print(f"❌ Gemini response error: {e}")
+                print(f" Gemini response error: {e}")
 
         # Fallback if AI not available or fails
         return jsonify({"reply": fallback_reply(user_message), "source": "fallback"})

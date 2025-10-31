@@ -1,29 +1,29 @@
 import fetch from 'node-fetch';
 
 export async function getChatbotReply(req, res) {
-  console.log('🚀 getChatbotReply function called');
-  console.log('📥 Request body:', req.body);
+  console.log('getChatbotReply function called');
+  console.log('Request body:', req.body);
   
   try {
     const { message } = req.body || {};
     
     if (!message || typeof message !== 'string' || !message.trim()) {
-      console.log('❌ Invalid message:', message);
+      console.log('Invalid message:', message);
       return res.status(400).json({ 
         error: 'Message is required and must be a non-empty string' 
       });
     }
 
     const flaskUrl = process.env.FLASK_CHATBOT_URL || 'http://localhost:5001';
-    console.log('🔗 Flask URL:', flaskUrl);
-    console.log(`🔄 Forwarding message to Flask chatbot: "${message}"`);
+    console.log('Flask URL:', flaskUrl);
+    console.log(`Forwarding message to Flask chatbot: "${message}"`);
     
     try {
       // Try to communicate with Flask service
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      console.log('📡 Making fetch request to Flask...');
+      console.log('Making fetch request to Flask...');
       const flaskResponse = await fetch(`${flaskUrl}/chat`, {
         method: 'POST',
         headers: {
@@ -33,27 +33,27 @@ export async function getChatbotReply(req, res) {
         signal: controller.signal,
       });
 
-      console.log('📨 Flask response status:', flaskResponse.status);
+      console.log('Flask response status:', flaskResponse.status);
       clearTimeout(timeoutId);
 
       if (flaskResponse.ok) {
         const data = await flaskResponse.json();
-        console.log(`✅ Flask response received (${data.source || 'unknown'}): "${data.reply}"`);
+        console.log(`Flask response received (${data.source || 'unknown'}): "${data.reply}"`);
         return res.json({ 
           reply: data.reply,
           source: data.source || 'flask',
           ai_enabled: data.source === 'ai'
         });
       } else {
-        console.error(`❌ Flask returned error: ${flaskResponse.status} ${flaskResponse.statusText}`);
+        console.error(`Flask returned error: ${flaskResponse.status} ${flaskResponse.statusText}`);
         const errorData = await flaskResponse.json().catch(() => ({}));
         throw new Error(`Flask service returned ${flaskResponse.status}: ${errorData.error || 'Unknown error'}`);
       }
     } catch (flaskError) {
       if (flaskError.name === 'AbortError') {
-        console.error('❌ Flask service timeout');
+        console.error('Flask service timeout');
       } else {
-        console.error('❌ Flask service unavailable:', flaskError.message);
+        console.error('Flask service unavailable:', flaskError.message);
       }
       
       // Fallback to simple responses if Flask is unavailable
@@ -69,7 +69,7 @@ export async function getChatbotReply(req, res) {
     }
 
   } catch (error) {
-    console.error('❌ Chatbot controller error:', error);
+    console.error(' Chatbot controller error:', error);
     return res.status(500).json({
       reply: "I'm here with you. I'm having trouble responding right now, but I'm listening.",
       source: 'error',
