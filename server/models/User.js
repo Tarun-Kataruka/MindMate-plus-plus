@@ -8,7 +8,6 @@ const userSchema = new mongoose.Schema(
     age: { type: Number, min: 13 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
     phone: { type: String, trim: true },
-    // Emergency contact details for crises or urgent notifications
     emergencyContactName: { type: String, trim: true },
     emergencyContactPhone: { type: String, trim: true },
     concerns: { type: [String], default: [] },

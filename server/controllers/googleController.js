@@ -16,23 +16,59 @@ export async function exchangeGoogleCode(req, res) {
     if (!req.userId) return res.status(401).json({ message: 'Unauthorized' });
     const { code } = req.body || {};
     if (!code) return res.status(400).json({ message: 'Missing code' });
-    const oauth2 = getOAuth2Client();
-    const { tokens } = await oauth2.getToken({ code });
-    const { refresh_token, access_token, expiry_date, scope } = tokens;
-    if (!refresh_token && !access_token) {
-      return res.status(400).json({ message: 'No tokens returned from Google' });
+    
+    // Check if user already has Google credentials
+    const existingUser = await User.findById(req.userId).lean();
+    if (existingUser?.google?.refreshToken) {
+      console.log('User already has Google credentials, skipping exchange');
+      return res.json({ connected: true, hasRefreshToken: true, alreadyConnected: true });
     }
-    const update = {
-      'google.refreshToken': refresh_token || undefined,
-      'google.accessToken': access_token || undefined,
-      'google.tokenExpiry': expiry_date ? new Date(expiry_date) : undefined,
-      'google.scope': scope,
-    };
-    await User.findByIdAndUpdate(req.userId, update, { new: true });
-    return res.json({ connected: true, hasRefreshToken: Boolean(refresh_token) });
+    
+    const oauth2 = getOAuth2Client();
+    
+    try {
+      const { tokens } = await oauth2.getToken({ code });
+      const { refresh_token, access_token, expiry_date, scope } = tokens;
+      
+      if (!refresh_token && !access_token) {
+        return res.status(400).json({ message: 'No tokens returned from Google' });
+      }
+      
+      const update = {
+        'google.refreshToken': refresh_token || undefined,
+        'google.accessToken': access_token || undefined,
+        'google.tokenExpiry': expiry_date ? new Date(expiry_date) : undefined,
+        'google.scope': scope,
+      };
+      
+      await User.findByIdAndUpdate(req.userId, update, { new: true });
+      console.log('Google credentials saved successfully for user:', req.userId);
+      return res.json({ connected: true, hasRefreshToken: Boolean(refresh_token) });
+    } catch (tokenError) {
+      // Handle invalid_grant error - code already used or expired
+      if (tokenError?.response?.data?.error === 'invalid_grant') {
+        console.warn('invalid_grant error - code may have been used or expired');
+        // Check if tokens were saved anyway (race condition where first request succeeded)
+        const user = await User.findById(req.userId).lean();
+        if (user?.google?.refreshToken) {
+          console.log('Tokens already exist despite invalid_grant error');
+          return res.json({ connected: true, hasRefreshToken: true, alreadyConnected: true });
+        }
+        return res.status(400).json({ 
+          message: 'Authorization code expired or already used. Please try connecting again.',
+          error: 'invalid_grant'
+        });
+      }
+      throw tokenError;
+    }
   } catch (err) {
-    console.error('exchangeGoogleCode error:', err);
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error('exchangeGoogleCode error:', {
+      message: err?.message,
+      code: err?.code,
+      response: err?.response?.data
+    });
+    const errorMessage = err?.response?.data?.error_description || err?.message || 'Internal server error';
+    return res.status(500).json({ message: errorMessage });
   }
 }
 

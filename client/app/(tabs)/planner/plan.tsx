@@ -42,6 +42,7 @@ export default function PlanScreen() {
   }, [items]);
 
   const [authInFlight, setAuthInFlight] = React.useState(false);
+
   const connectGoogle = async () => {
     try {
       if (authInFlight) return;
@@ -53,11 +54,11 @@ export default function PlanScreen() {
       } else {
         await Linking.openURL(authUrl);
       }
-    } catch {}
+    } catch(error) {
+      console.log('Error during Google OAuth:', error);
+    }
     finally { setAuthInFlight(false); }
   };
-
-  // After OAuth completes, the callback screen will exchange code and redirect back
 
   const pushPlan = async () => {
     try {
