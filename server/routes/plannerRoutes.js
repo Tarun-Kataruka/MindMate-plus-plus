@@ -16,6 +16,7 @@ import {
   deleteDatesheet,
   createPlan,
   getPlan,
+  checkGoogleConnection,
   pushPlanToGoogle,
 } from '../controllers/plannerController.js';
 
@@ -47,6 +48,7 @@ router.post('/plan', requireAuth, createPlan);
 router.get('/plan', requireAuth, getPlan);
 
 // Google Calendar
+router.get('/google/status', requireAuth, checkGoogleConnection);
 router.post('/google/push', requireAuth, pushPlanToGoogle);
 
 export default router;

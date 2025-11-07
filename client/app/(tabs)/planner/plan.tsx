@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import * as Linking from 'expo-linking';
 
@@ -11,12 +11,27 @@ export default function PlanScreen() {
   const router = useRouter();
   const [items, setItems] = React.useState<PlanItem[]>([]);
   const [loading, setLoading] = React.useState<boolean>(false);
-  const [connected] = React.useState<boolean>(false);
+  const [connected, setConnected] = React.useState<boolean>(false);
   const [syncing, setSyncing] = React.useState<boolean>(false);
   const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
   const token = (globalThis as any).authToken as string | undefined;
   const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
   const redirectUri = process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI as string | undefined;
+
+  const checkGoogleStatus = React.useCallback(async () => {
+    try {
+      const res = await fetch(`${baseUrl}/api/planner/google/status`, { 
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined 
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConnected(data?.connected === true);
+      }
+    } catch (err) {
+      console.error('Error checking Google status:', err);
+      setConnected(false);
+    }
+  }, [baseUrl, token]);
 
   React.useEffect(() => {
     (async () => {
@@ -29,7 +44,8 @@ export default function PlanScreen() {
       } catch {}
       finally { setLoading(false); }
     })();
-  }, [baseUrl, token]);
+    checkGoogleStatus();
+  }, [baseUrl, token, checkGoogleStatus]);
 
   const grouped = React.useMemo(() => {
     const map: Record<string, PlanItem[]> = {};
@@ -42,6 +58,13 @@ export default function PlanScreen() {
   }, [items]);
 
   const [authInFlight, setAuthInFlight] = React.useState(false);
+
+  // Check Google status when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      checkGoogleStatus();
+    }, [checkGoogleStatus])
+  );
 
   const connectGoogle = async () => {
     try {
@@ -61,15 +84,27 @@ export default function PlanScreen() {
   };
 
   const pushPlan = async () => {
+    if (!connected) {
+      Alert.alert('Not Connected', 'Please connect your Google Calendar first.');
+      return;
+    }
     try {
       setSyncing(true);
-      const resp = await fetch(`${baseUrl}/api/planner/google/push`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+      const resp = await fetch(`${baseUrl}/api/planner/google/push`, { 
+        method: 'POST', 
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined 
+      });
       const data = await resp.json();
       if (resp.ok) {
-        Alert.alert('Pushed', `Created ${data?.created ?? 0} events in your Google Calendar.`);
+        Alert.alert('Success', `Created ${data?.created ?? 0} out of ${data?.total ?? 0} events in your Google Calendar.`);
       } else {
-        Alert.alert('Error', data?.message || 'Failed to push plan');
+        Alert.alert('Error', data?.message || 'Failed to push plan to Google Calendar');
+        if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          console.error('Push errors:', data.errors);
+        }
       }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to push plan');
     } finally {
       setSyncing(false);
     }

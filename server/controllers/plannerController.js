@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
+import { google } from 'googleapis';
 import AcademicSubject from '../models/AcademicSubject.js';
 import AcademicNote from '../models/AcademicNote.js';
 import StudyPlan from '../models/StudyPlan.js';
@@ -309,75 +310,141 @@ export const getPlan = async (req, res) => {
 };
 
 
+export const checkGoogleConnection = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('google');
+    const connected = !!(user?.google?.refreshToken || user?.google?.accessToken);
+    res.json({ connected });
+  } catch (err) {
+    console.error('checkGoogleConnection error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 export const pushPlanToGoogle = async (req, res) => {
   try {
-    console.log('Starting pushPlanToGoogle for user:', req.userId);
     const user = await User.findById(req.userId);
-    if (!user || !user.google?.accessToken) {
-      console.log('No Google credentials found for user:', req.userId);
-      return res.status(400).json({ message: 'No Google credentials found' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    let { accessToken, refreshToken, tokenExpiry } = user.google;
+    // Check if user has Google credentials (refreshToken is the key indicator)
+    if (!user.google?.refreshToken) {
+      return res.status(400).json({ message: 'Google Calendar not connected. Please connect your Google account first.' });
+    }
+
+    const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI;
+
+    if (!clientId || !redirectUri) {
+      return res.status(500).json({ message: 'Google OAuth configuration missing' });
+    }
+
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+    
+    // Set credentials and refresh token if needed
+    let accessToken = user.google.accessToken;
+    const refreshToken = user.google.refreshToken;
+    const tokenExpiry = user.google.tokenExpiry;
+
+    // Check if token needs refresh
     if (!accessToken || !tokenExpiry || new Date() >= new Date(tokenExpiry)) {
-      if (!refreshToken) {
-        console.log('⚠️ No refresh token found for user:', user.email);
-        return res.status(401).json({ message: 'Google token expired and no refresh token available' });
-      }
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        process.env.GOOGLE_REDIRECT_URI
-      );
       oauth2Client.setCredentials({ refresh_token: refreshToken });
       try {
         const tokenResponse = await oauth2Client.getAccessToken();
         accessToken = tokenResponse.token;
-        tokenExpiry = new Date(Date.now() + 55 * 60 * 1000);
+        const newTokenExpiry = new Date(Date.now() + 55 * 60 * 1000);
+        
+        // Update user with new token
         user.google.accessToken = accessToken;
-        user.google.tokenExpiry = tokenExpiry;
+        user.google.tokenExpiry = newTokenExpiry;
         await user.save();
       } catch (refreshError) {
         console.error('Error refreshing access token:', refreshError);
-        return res.status(401).json({ message: 'Failed to refresh Google token' });
+        return res.status(401).json({ 
+          message: 'Failed to refresh Google token. Please reconnect your Google account.',
+          error: refreshError?.message 
+        });
       }
+    } else {
+      oauth2Client.setCredentials({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
     }
+
+    // Get the study plan
     const plan = await StudyPlan.findOne({ userId: req.userId }).sort({ createdAt: -1 });
     if (!plan || !plan.items?.length) {
-      return res.status(400).json({ message: 'No study plan found' });
+      console.log("No study plan found for user:", req.userId);
+      return res.status(400).json({ message: 'No study plan found. Please create a study plan first.' });
     }
+
+    // Use Google Calendar API
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    
     let created = 0;
+    const errors = [];
+
     for (const item of plan.items) {
       try {
-        const eventData = {
+        const startDate = new Date(item.start);
+        const endDate = new Date(item.end);
+
+        // Validate dates
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          errors.push(`Invalid date for: ${item.title}`);
+          continue;
+        }
+
+        const event = {
           summary: item.title || 'Study Session',
-          start: { dateTime: new Date(item.start).toISOString() },
-          end: { dateTime: new Date(item.end).toISOString() },
+          start: {
+            dateTime: startDate.toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          },
+          end: {
+            dateTime: endDate.toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          },
         };
 
-        const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(eventData),
+        const response = await calendar.events.insert({
+          calendarId: 'primary',
+          requestBody: event,
         });
 
-        if (resp.ok) {
+        if (response.data) {
           created++;
-        } else {
-          const errData = await resp.json();
-          console.error(`Failed to create event:`, errData);
         }
       } catch (e) {
-        console.error('Error pushing event to Google Calendar:', e);
+        console.error('Error creating calendar event:', e);
+        errors.push(`${item.title}: ${e?.message || 'Unknown error'}`);
       }
     }
-    res.json({ ok: true, created });
+
+    if (created === 0 && errors.length > 0) {
+      return res.status(400).json({ 
+        message: 'Failed to create events',
+        errors: errors.slice(0, 5), // Return first 5 errors
+        created: 0
+      });
+    }
+
+    res.json({ 
+      ok: true, 
+      created,
+      total: plan.items.length,
+      errors: errors.length > 0 ? errors.slice(0, 5) : undefined
+    });
   } catch (err) {
     console.error('pushPlanToGoogle error:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ 
+      message: err?.message || 'Internal server error',
+      error: err?.toString()
+    });
   }
 };
+
 
