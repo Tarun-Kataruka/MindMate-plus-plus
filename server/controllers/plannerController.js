@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import mongoose from 'mongoose';
 import AcademicSubject from '../models/AcademicSubject.js';
 import AcademicNote from '../models/AcademicNote.js';
 import StudyPlan from '../models/StudyPlan.js';
@@ -31,11 +32,57 @@ export const createSubject = async (req, res) => {
 
 export const deleteSubject = async (req, res) => {
   try {
-    await AcademicSubject.deleteOne({ _id: req.params.id, userId: req.userId });
-    res.json({ ok: true });
+    const subjectId = req.params.id;
+    if (!subjectId) {
+      return res.status(400).json({ message: 'Subject ID is required' });
+    }
+    
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
+      return res.status(400).json({ message: 'Invalid subject ID format' });
+    }
+    
+    // Check if subject exists and belongs to user
+    const subject = await AcademicSubject.findOne({ _id: subjectId, userId: req.userId });
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+  
+    // Find all notes for this subject
+    const notes = await AcademicNote.find({ subjectId, userId: req.userId });
+    
+    // Delete all associated files from filesystem
+    let deletedFiles = 0;
+    for (const note of notes) {
+      try {
+        if (note.filePath && fs.existsSync(note.filePath)) {
+          fs.unlinkSync(note.filePath);
+          deletedFiles++;
+        }
+      } catch (fileErr) {
+        console.error('Error deleting file:', fileErr);
+      }
+    }
+    
+    // Delete all notes from database
+    const deleteNotesResult = await AcademicNote.deleteMany({ subjectId, userId: req.userId });
+    
+    // Delete the subject
+    const deleteSubjectResult = await AcademicSubject.deleteOne({ _id: subjectId, userId: req.userId });
+    
+    if (deleteSubjectResult.deletedCount === 0) {
+      return res.status(404).json({ message: 'Subject not found or already deleted' });
+    }
+    
+    res.json({ 
+      ok: true, 
+      deletedNotes: notes.length,
+      deletedFiles: deletedFiles,
+      message: 'Subject and all associated notes deleted successfully'
+    });
   } catch (err) {
     console.error('deleteSubject error:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: err.message || 'Internal server error' });
   }
 };
 
@@ -277,7 +324,6 @@ export const pushPlanToGoogle = async (req, res) => {
         console.log('⚠️ No refresh token found for user:', user.email);
         return res.status(401).json({ message: 'Google token expired and no refresh token available' });
       }
-      console.log('Refreshing Google access token...');
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
@@ -291,8 +337,6 @@ export const pushPlanToGoogle = async (req, res) => {
         user.google.accessToken = accessToken;
         user.google.tokenExpiry = tokenExpiry;
         await user.save();
-
-        console.log('Token refreshed and saved for user:', user.email);
       } catch (refreshError) {
         console.error('Error refreshing access token:', refreshError);
         return res.status(401).json({ message: 'Failed to refresh Google token' });
@@ -300,7 +344,6 @@ export const pushPlanToGoogle = async (req, res) => {
     }
     const plan = await StudyPlan.findOne({ userId: req.userId }).sort({ createdAt: -1 });
     if (!plan || !plan.items?.length) {
-      console.log('⚠️ No study plan found for user:', user.email);
       return res.status(400).json({ message: 'No study plan found' });
     }
     let created = 0;
@@ -323,7 +366,6 @@ export const pushPlanToGoogle = async (req, res) => {
 
         if (resp.ok) {
           created++;
-          console.log(`Created event: ${eventData.summary}`);
         } else {
           const errData = await resp.json();
           console.error(`Failed to create event:`, errData);
@@ -332,8 +374,6 @@ export const pushPlanToGoogle = async (req, res) => {
         console.error('Error pushing event to Google Calendar:', e);
       }
     }
-
-    console.log(`Successfully created ${created} Google Calendar events for ${user.email}`);
     res.json({ ok: true, created });
   } catch (err) {
     console.error('pushPlanToGoogle error:', err);

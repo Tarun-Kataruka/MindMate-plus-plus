@@ -25,7 +25,7 @@ const upload = createPlannerUpload();
 // Subjects
 router.get('/subjects', requireAuth, getSubjects);
 router.post('/subjects', requireAuth, createSubject);
-router.delete('/subjects/:id', requireAuth, deleteSubject);
+router.delete('/deletesubject/:id', requireAuth, deleteSubject);
 
 // Notes
 router.get('/notes', requireAuth, getNotes);
