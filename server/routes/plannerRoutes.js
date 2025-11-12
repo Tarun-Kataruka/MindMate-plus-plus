@@ -16,7 +16,9 @@ import {
   deleteDatesheet,
   createPlan,
   getPlan,
+  updatePlanItemCompletion,
   checkGoogleConnection,
+  disconnectGoogle,
   pushPlanToGoogle,
 } from '../controllers/plannerController.js';
 
@@ -46,9 +48,11 @@ router.delete('/datesheet', requireAuth, deleteDatesheet);
 // Study Plan
 router.post('/plan', requireAuth, createPlan);
 router.get('/plan', requireAuth, getPlan);
+router.patch('/plan/items/:itemId', requireAuth, updatePlanItemCompletion);
 
 // Google Calendar
 router.get('/google/status', requireAuth, checkGoogleConnection);
+router.post('/google/disconnect', requireAuth, disconnectGoogle);
 router.post('/google/push', requireAuth, pushPlanToGoogle);
 
 export default router;

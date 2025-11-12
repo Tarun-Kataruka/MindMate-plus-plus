@@ -284,7 +284,7 @@ export const createPlan = async (req, res) => {
         const start = new Date(cursor);
         const end = new Date(cursor);
         end.setHours(end.getHours() + blockHours);
-        items.push({ subjectId: s._id, title: `Study ${s.name}`, start, end });
+        items.push({ subjectId: s._id, title: `Study ${s.name}`, start, end, completed: false });
         cursor = new Date(end);
       }
       cursor.setDate(cursor.getDate() + 1);
@@ -309,6 +309,34 @@ export const getPlan = async (req, res) => {
   }
 };
 
+export const updatePlanItemCompletion = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { completed } = req.body ?? {};
+
+    if (typeof completed !== 'boolean') {
+      return res.status(400).json({ message: 'completed must be a boolean' });
+    }
+
+    const plan = await StudyPlan.findOne({ userId: req.userId }).sort({ createdAt: -1 });
+    if (!plan) {
+      return res.status(404).json({ message: 'No study plan found' });
+    }
+
+    const item = plan.items.id(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Plan item not found' });
+    }
+
+    item.completed = completed;
+    await plan.save();
+
+    res.json({ ok: true, item });
+  } catch (err) {
+    console.error('updatePlanItemCompletion error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 export const checkGoogleConnection = async (req, res) => {
   try {
@@ -317,6 +345,24 @@ export const checkGoogleConnection = async (req, res) => {
     res.json({ connected });
   } catch (err) {
     console.error('checkGoogleConnection error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const disconnectGoogle = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.google = undefined;
+    user.markModified('google');
+    await user.save();
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('disconnectGoogle error:', err);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

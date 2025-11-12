@@ -11,6 +11,8 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+
 const Colors = {
   primary: "#77C272",
   secondary: "#388e3c",
@@ -32,6 +34,7 @@ export interface UserData {
   concerns: string[];
   avatarUrl?: string;
 }
+
 interface UserContextType {
   userData: UserData;
   setUserData: React.Dispatch<React.SetStateAction<UserData>>;
@@ -60,9 +63,9 @@ export const UserContext = createContext<UserContextType>({
 });
 
 export const useUser = () => useContext(UserContext);
+
 const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [userData, setUserData] = useState<UserData>(initialUserData);
-
   return (
     <UserContext.Provider value={{ userData, setUserData }}>
       {children}
@@ -106,6 +109,7 @@ export function ProfileScreenContent() {
     /\/?$/,
     "/"
   );
+
   const fetchProfile = useCallback(async () => {
     try {
       const token = (globalThis as any).authToken as string | undefined;
@@ -130,14 +134,17 @@ export function ProfileScreenContent() {
       }
     } catch {}
   }, [setUserData, API_BASE]);
+
   React.useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
   useFocusEffect(
     React.useCallback(() => {
       fetchProfile();
     }, [fetchProfile])
   );
+
   const allConcerns = [
     "Anger",
     "Anxiety and Panic Attacks",
@@ -147,6 +154,17 @@ export function ProfileScreenContent() {
     "Self-harm",
     "Stress",
     "Sleep disorders",
+  ];
+
+  const terms = [
+    "By using MindMate++, you agree to these Terms and our Privacy Policy.",
+    "The app provides AI-powered study and wellbeing support. It does not replace professional academic, medical, or mental health advice.",
+    "AI study plans are for guidance only; outcomes depend on your effort, consistency, and individual factors.",
+    "You are responsible for the accuracy of information (subjects, notes, timetable) you upload.",
+    "We are not liable for any results, losses, or issues arising from the use or inability to use the app.",
+    "If you face serious stress or mental health concerns, seek help from a qualified counselor or healthcare provider.",
+    "We may update our Terms periodically. Continued use of the app means you accept those changes.",
+    "For questions, contact us at support@mindmate.example.",
   ];
 
   return (
@@ -163,17 +181,19 @@ export function ProfileScreenContent() {
 
       <View style={styles.profileContainer}>
         <View style={styles.avatarWrapper}>
-          {(() => {
-            if (userData.avatarUrl) {
-              return (
-                <Image source={{ uri: userData.avatarUrl }} style={styles.avatar} />
-              );
-            }
-            const genderAvatar = userData.gender === 'male'
-              ? 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png'
-              : 'https://cdn-icons-png.flaticon.com/512/4140/4140047.png';
-            return <Image source={{ uri: genderAvatar }} style={styles.avatar} />;
-          })()}
+          {userData.avatarUrl ? (
+            <Image source={{ uri: userData.avatarUrl }} style={styles.avatar} />
+          ) : (
+            <Image
+              source={{
+                uri:
+                  userData.gender === "male"
+                    ? "https://cdn-icons-png.flaticon.com/512/4140/4140048.png"
+                    : "https://cdn-icons-png.flaticon.com/512/4140/4140047.png",
+              }}
+              style={styles.avatar}
+            />
+          )}
         </View>
         <Text style={styles.name}>{userData.name}</Text>
 
@@ -199,7 +219,6 @@ export function ProfileScreenContent() {
             <Text style={styles.infoText}>{userData.phone}</Text>
           )}
         </View>
-
         <View style={styles.emailRow}>
           <Ionicons name="mail-outline" size={16} color={Colors.secondary} />
           <Text style={styles.infoText}>{userData.email}</Text>
@@ -224,30 +243,44 @@ export function ProfileScreenContent() {
         </View>
       </View>
 
+      {/* Enhanced Terms Section */}
+      <LinearGradient
+        colors={["#F9FFF9", "#E8F5E9"]}
+        style={styles.legalCard}
+      >
+        <Text style={styles.legalTitle}>
+          <Ionicons name="document-text-outline" size={18} color={Colors.secondary} />{" "}
+          Terms & Conditions
+        </Text>
+
+        {terms.map((term, index) => (
+          <View key={index} style={styles.termItem}>
+            <View style={styles.termIconCircle}>
+              <Text style={styles.termNumber}>{index + 1}</Text>
+            </View>
+            <Text style={styles.termText}>{term}</Text>
+          </View>
+        ))}
+      </LinearGradient>
+
       <TouchableOpacity
-        style={{
-          backgroundColor: Colors.secondary,
-          margin: 20,
-          paddingVertical: 14,
-          borderRadius: 10,
-          alignItems: 'center',
-        }}
+        style={styles.logoutButton}
         onPress={() => {
-          // Remove token from memory and storage, then redirect
-          if (typeof window !== 'undefined' && Platform.OS === 'web') {
-            window.localStorage.removeItem('authToken');
+          if (typeof window !== "undefined" && Platform.OS === "web") {
+            window.localStorage.removeItem("authToken");
           }
           (globalThis as any).authToken = undefined;
-          router.replace('/(auth)/login');
+          router.replace("/(auth)/login");
         }}
       >
-        <Text style={{ color: Colors.white, fontWeight: 'bold', fontSize: 16 }}>Logout</Text>
+        <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
 
       <View style={{ height: 60 }} />
     </ScrollView>
   );
 }
+
 export default function ProfileScreen() {
   return (
     <UserProvider>
@@ -308,6 +341,63 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "flex-start",
   },
+  // New Beautiful Legal Card
+  legalCard: {
+    marginHorizontal: 20,
+    marginTop: 24,
+    padding: 18,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#dcefdc",
+  },
+  legalTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: Colors.secondary,
+    marginBottom: 14,
+    textAlign: "center",
+  },
+  termItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  termIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  termNumber: {
+    color: Colors.white,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  termText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#374c37",
+    lineHeight: 19,
+  },
+  logoutButton: {
+    backgroundColor: Colors.secondary,
+    margin: 20,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  logoutText: {
+    color: Colors.white,
+    fontWeight: "bold",
+    fontSize: 16,
+  },
 });
 
 const chipStyles = StyleSheet.create({
@@ -320,12 +410,8 @@ const chipStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  defaultChip: {
-    backgroundColor: "#e6eddc",
-  },
-  selectedChip: {
-    backgroundColor: Colors.primary,
-  },
+  defaultChip: { backgroundColor: "#e6eddc" },
+  selectedChip: { backgroundColor: Colors.primary },
   defaultText: { fontSize: 14, color: "#6a7c67" },
   selectedText: { fontSize: 14, color: Colors.white },
 });

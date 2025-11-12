@@ -5,7 +5,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import * as Linking from 'expo-linking';
 
-type PlanItem = { title: string; start: string | Date; end: string | Date; subjectId?: string };
+type PlanItem = { _id?: string; title: string; start: string | Date; end: string | Date; subjectId?: string; completed?: boolean };
 
 export default function PlanScreen() {
   const router = useRouter();
@@ -33,19 +33,24 @@ export default function PlanScreen() {
     }
   }, [baseUrl, token]);
 
+  const loadPlan = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${baseUrl}/api/planner/plan`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+      const data = await res.json();
+      const arr: PlanItem[] = Array.isArray(data?.items) ? data.items : [];
+      setItems(arr);
+    } catch (err) {
+      console.error('Error loading plan:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [baseUrl, token]);
+
   React.useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${baseUrl}/api/planner/plan`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
-        const data = await res.json();
-        const arr: PlanItem[] = Array.isArray(data?.items) ? data.items : [];
-        setItems(arr);
-      } catch {}
-      finally { setLoading(false); }
-    })();
+    loadPlan();
     checkGoogleStatus();
-  }, [baseUrl, token, checkGoogleStatus]);
+  }, [loadPlan, checkGoogleStatus]);
 
   const grouped = React.useMemo(() => {
     const map: Record<string, PlanItem[]> = {};
@@ -63,7 +68,8 @@ export default function PlanScreen() {
   useFocusEffect(
     React.useCallback(() => {
       checkGoogleStatus();
-    }, [checkGoogleStatus])
+      loadPlan();
+    }, [checkGoogleStatus, loadPlan])
   );
 
   const connectGoogle = async () => {
@@ -110,6 +116,49 @@ export default function PlanScreen() {
     }
   };
 
+  const toggleCompletion = async (itemId?: string, nextValue?: boolean) => {
+    if (!itemId || typeof nextValue !== 'boolean') return;
+    setItems((prev) =>
+      prev.map((it) => (it._id === itemId ? { ...it, completed: nextValue } : it))
+    );
+    try {
+      const resp = await fetch(`${baseUrl}/api/planner/plan/items/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ completed: nextValue }),
+      });
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({}));
+        throw new Error(errBody.message || 'Failed to update task');
+      }
+    } catch (err: any) {
+      setItems((prev) =>
+        prev.map((it) => (it._id === itemId ? { ...it, completed: !nextValue } : it))
+      );
+      Alert.alert('Error', err?.message || 'Failed to update task');
+    }
+  };
+
+  const disconnectGoogle = async () => {
+    try {
+      const resp = await fetch(`${baseUrl}/api/planner/google/disconnect`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({}));
+        throw new Error(errBody.message || 'Failed to disconnect Google Calendar');
+      }
+      setConnected(false);
+      Alert.alert('Disconnected', 'Google Calendar has been disconnected.');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not disconnect Google Calendar');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -130,9 +179,21 @@ export default function PlanScreen() {
           <View style={styles.dayBlock}>
             <Text style={styles.dayTitle}>{item.day}</Text>
             {item.entries.map((e, idx) => (
-              <View key={idx} style={styles.entryRow}>
-                <Text style={styles.entryTime}>{new Date(e.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(e.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                <Text style={styles.entryTitle}>{e.title}</Text>
+              <View key={e._id || idx} style={styles.entryRow}>
+                <TouchableOpacity
+                  style={[styles.checkboxContainer, e.completed ? styles.completedBackground : null]}
+                  onPress={() => toggleCompletion(e._id, !e.completed)}
+                >
+                  <View style={[styles.checkbox, e.completed && styles.checkboxChecked]}>
+                    {e.completed ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.entryTime, e.completed && styles.completedText]}>
+                      {new Date(e.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(e.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                    <Text style={[styles.entryTitle, e.completed && styles.completedText]}>{e.title}</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -146,14 +207,23 @@ export default function PlanScreen() {
           <View style={[styles.statusDot, { backgroundColor: connected ? '#77C272' : '#ff9800' }]} />
           <Text style={styles.statusText}>{connected ? 'Google Calendar connected' : 'Not connected'}</Text>
         </View>
-        <TouchableOpacity style={styles.pushBtn} onPress={connectGoogle}>
-          <Ionicons name="logo-google" size={18} color="#fff" />
-          <Text style={styles.pushText}>Connect Google Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.pushBtn, { marginTop: 10, opacity: syncing ? 0.7 : 1 }]} onPress={pushPlan} disabled={syncing}>
-          <Ionicons name="cloud-upload" size={18} color="#fff" />
-          <Text style={styles.pushText}>{syncing ? 'Pushing…' : 'Push Plan to Google'}</Text>
-        </TouchableOpacity>
+        {connected ? (
+          <>
+            <TouchableOpacity style={[styles.pushBtn, styles.disconnectBtn]} onPress={disconnectGoogle}>
+              <Ionicons name="close-circle" size={18} color="#fff" />
+              <Text style={styles.pushText}>Disconnect Google Calendar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.pushBtn, { marginTop: 10, opacity: syncing ? 0.7 : 1 }]} onPress={pushPlan} disabled={syncing}>
+              <Ionicons name="cloud-upload" size={18} color="#fff" />
+              <Text style={styles.pushText}>{syncing ? 'Pushing…' : 'Push Plan to Google'}</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity style={styles.pushBtn} onPress={connectGoogle}>
+            <Ionicons name="logo-google" size={18} color="#fff" />
+            <Text style={styles.pushText}>Connect Google Calendar</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -167,13 +237,19 @@ const styles = StyleSheet.create({
   dayBlock: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#eee' },
   dayTitle: { color: '#388e3c', fontWeight: '700', marginBottom: 8 },
   entryRow: { paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f1f1f1' },
+  checkboxContainer: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 10 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#77C272', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  checkboxChecked: { backgroundColor: '#77C272', borderColor: '#77C272' },
   entryTime: { color: '#666', marginBottom: 2 },
   entryTitle: { color: Colors.light.text, fontWeight: '600' },
+  completedText: { color: '#9e9e9e', textDecorationLine: 'line-through' },
+  completedBackground: { backgroundColor: '#f1f8e9' },
   footer: { padding: 16 },
   statusCard: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   statusText: { color: '#388e3c', fontWeight: '600' },
   pushBtn: { backgroundColor: '#77C272', paddingVertical: 14, borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  disconnectBtn: { backgroundColor: '#ff6b6b' },
   pushText: { color: '#fff', fontWeight: '600' },
 });
 

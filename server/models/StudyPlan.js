@@ -39,6 +39,10 @@ const studyItemSchema = new mongoose.Schema(
         message: 'End date must be a valid date and after start date',
       },
     },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
   },
   { _id: true } // Enable _id for individual item tracking
 );

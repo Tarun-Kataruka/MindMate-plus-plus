@@ -48,6 +48,14 @@ export default function AcademicPlannerScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Stylish Disclaimer Box */}
+      <View style={styles.disclaimerBox}>
+        <Ionicons name="warning-outline" size={22} color="#8a6d00" style={{ marginRight: 8 }} />
+        <Text style={styles.disclaimerText}>
+          Study schedules are AI-generated for guidance only. Your progress depends on your own effort and consistency. For academic or mental health concerns, please consult a qualified professional.
+        </Text>
+      </View>
+
     </SafeAreaView>
   );
 }
@@ -58,7 +66,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7FDF7",
   },
 
-  // Beautiful Header Section
+  // Header Section
   headerContainer: {
     paddingTop: 60,
     paddingBottom: 50,
@@ -95,7 +103,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  // Glassmorphic Card
+  // Card Section
   card: {
     marginTop: -20,
     backgroundColor: 'rgba(255,255,255,0.95)',
@@ -142,5 +150,29 @@ const styles = StyleSheet.create({
     color: '#4AAE63',
     fontWeight: '700',
     fontSize: 17,
+  },
+
+  // Stylish Disclaimer
+  disclaimerBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF9C4',
+    borderLeftWidth: 5,
+    borderLeftColor: '#FBC02D',
+    marginHorizontal: 20,
+    marginTop: 25,
+    marginBottom: 35,
+    padding: 14,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#5f5f5f',
   },
 });
