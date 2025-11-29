@@ -1,55 +1,73 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { Colors } from '@/constants/theme';
-import JournalTab from '../../../components/journal/JournalTab';
-import BlogTab from '../../../components/journal/BlogTab';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+} from "react-native";
+import { Colors } from "@/constants/theme";
+import JournalTab from "../../../components/journal/JournalTab";
+import BlogTab from "../../../components/journal/BlogTab";
 
-type TabKey = 'BLOGS' | 'JOURNALS';
+type TabKey = "BLOGS" | "JOURNALS";
 
 export default function JournalsMainScreen() {
-  const [activeTab, setActiveTab] = useState<TabKey>('JOURNALS');
+  const [activeTab, setActiveTab] = useState<TabKey>("JOURNALS");
   const [journals, setJournals] = useState<any[]>([]);
   const [blogs, setBlogs] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const tabs = useMemo(() => (['BLOGS', 'JOURNALS'] as TabKey[]), []);
+  const tabs = useMemo(() => ["BLOGS", "JOURNALS"] as TabKey[], []);
 
-  const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
-
+  const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+  const token = (globalThis as any).authToken as string | undefined;
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        if (activeTab === 'JOURNALS') {
-          const token = (globalThis as any).authToken as string | undefined;
+        if (activeTab === "JOURNALS") {
           const res = await fetch(`${baseUrl}/api/journals`, {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           });
           const data = await res.json();
           setJournals(Array.isArray(data) ? data : []);
         } else {
-          const res = await fetch(`${baseUrl}/api/blogs`);
+          const res = await fetch(`${baseUrl}/api/blogs`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
           const data = await res.json();
           setBlogs(Array.isArray(data) ? data : []);
         }
       } catch (e: any) {
-        setError('Failed to load data');
-        console.error('Failed to fetch tabs data:', e?.message || e);
+        setError("Failed to load data");
+        console.error("Failed to fetch tabs data:", e?.message || e);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [activeTab, baseUrl]);
+  }, [activeTab, baseUrl,token]);
 
-  const handleJournalCreated = (created: any) => setJournals((prev) => [created, ...prev]);
-  const handleJournalDeleted = (id: string) => setJournals((prev) => prev.filter((j) => (j._id || j.id) !== id));
-  const handleBlogCreated = (created: any) => setBlogs((prev) => [created, ...prev]);
+  const handleJournalCreated = (created: any) =>
+    setJournals((prev) => [created, ...prev]);
+  const handleJournalDeleted = (id: string) =>
+    setJournals((prev) => prev.filter((j) => (j._id || j.id) !== id));
+  const handleBlogCreated = (created: any) =>
+    setBlogs((prev) => [created, ...prev]);
   const handleBlogLiked = (updated: any) =>
-    setBlogs((prev) => prev.map((b) => ((b._id || b.id) === (updated._id || updated.id) ? updated : b)));
+    setBlogs((prev) =>
+      prev.map((b) =>
+        (b._id || b.id) === (updated._id || updated.id) ? updated : b
+      )
+    );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -64,7 +82,9 @@ export default function JournalsMainScreen() {
               activeOpacity={0.8}
             >
               <View style={styles.tabContentWrap}>
-                <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+                <Text
+                  style={[styles.tabText, isActive && styles.activeTabText]}
+                >
                   {tab}
                 </Text>
                 {isActive && <View style={styles.activeUnderline} />}
@@ -78,12 +98,21 @@ export default function JournalsMainScreen() {
         <ActivityIndicator color="#2196F3" style={{ marginTop: 20 }} />
       ) : error ? (
         <View style={{ padding: 16 }}>
-          <Text style={{ color: '#d32f2f' }}>{error}</Text>
+          <Text style={{ color: "#d32f2f" }}>{error}</Text>
         </View>
-      ) : activeTab === 'JOURNALS' ? (
-        <JournalTab data={journals} onPressItem={(id) => console.log('View Journal:', id)} onCreated={handleJournalCreated} onDeleted={handleJournalDeleted} />
+      ) : activeTab === "JOURNALS" ? (
+        <JournalTab
+          data={journals}
+          onPressItem={(id) => console.log("View Journal:", id)}
+          onCreated={handleJournalCreated}
+          onDeleted={handleJournalDeleted}
+        />
       ) : (
-        <BlogTab data={blogs} onCreated={handleBlogCreated} onLiked={handleBlogLiked} />
+        <BlogTab
+          data={blogs}
+          onCreated={handleBlogCreated}
+          onLiked={handleBlogLiked}
+        />
       )}
     </SafeAreaView>
   );
@@ -95,30 +124,30 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   tabContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    backgroundColor: '#77C272',
+    flexDirection: "row",
+    justifyContent: "center",
+    backgroundColor: "#77C272",
   },
   tabButton: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 12,
   },
   tabContentWrap: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   tabText: {
     fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
+    color: "#fff",
+    fontWeight: "500",
   },
   activeTabText: {
-    fontWeight: '700',
+    fontWeight: "700",
   },
   activeUnderline: {
     height: 2,
-    width: '100%',
-    backgroundColor: '#2196F3',
+    width: "100%",
+    backgroundColor: "#2196F3",
     marginTop: 6,
   },
 });
