@@ -7,6 +7,7 @@ const blogSchema = new mongoose.Schema(
     image: { type: String, default: '' },
     excerpt: { type: String, required: true },
     likes: { type: Number, default: 0 },
+    category: { type: String, required: true }, 
   },
   { timestamps: true }
 );
