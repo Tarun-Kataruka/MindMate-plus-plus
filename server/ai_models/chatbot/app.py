@@ -3,8 +3,16 @@ import google.generativeai as genai
 import os
 import sys
 import codecs
+from datetime import datetime
 from dotenv import load_dotenv
 from flask_cors import CORS
+
+from studyplanner import (
+    generate_plan,
+    extract_exams_from_image,
+    iso,
+    hours_between,
+)
 
 # Fix Windows console encoding (for Windows terminal output)
 if sys.platform == "win32":
@@ -44,6 +52,10 @@ also keep the answers short and convesational.
 also keep in mind you are interacting to a person living in india
 """
 
+
+def _json_error(message, status_code=400):
+    return jsonify({"ok": False, "error": message}), status_code
+
 def fallback_reply(user_text):
     """Rule-based fallback when AI model isn't available."""
     lowered = user_text.lower()
@@ -70,7 +82,11 @@ def home():
         "status": "ok",
         "version": "1.0.0",
         "ai_enabled": model is not None,
-        "endpoints": { "health": "/health", "chat": "/chat (POST)" }
+        "endpoints": {
+            "health": "/health",
+            "chat": "/chat (POST)",
+            "study_plan": "/studyplan (POST)"
+        }
     })
 
 @app.route("/health")
@@ -108,6 +124,83 @@ def chat():
             "reply": "I'm here with you. I’m having a small hiccup right now, but I’m listening.",
             "source": "error"
         }), 500
+
+
+@app.route("/studyplan", methods=["POST"])
+def study_plan():
+    data = request.get_json(silent=True)
+    if not data:
+        return _json_error("Invalid or missing JSON body.")
+
+    raw_subjects = data.get("subjects")
+    if not isinstance(raw_subjects, list) or not raw_subjects:
+        return _json_error("'subjects' must be a non-empty list of names or subject objects.")
+
+    subjects = []
+    for entry in raw_subjects:
+        if isinstance(entry, str):
+            name = entry.strip()
+            if name:
+                subjects.append({"name": name})
+        elif isinstance(entry, dict) and entry.get("name"):
+            subjects.append(entry)
+    if not subjects:
+        return _json_error("Each subject entry must include a 'name'.")
+
+    availability = data.get("availability") or {}
+    for key in ("daily_start", "daily_end"):
+        if key not in availability:
+            return _json_error(f"availability.{key} is required.")
+    try:
+        days_value = int(availability.get("days", 1))
+    except (TypeError, ValueError):
+        days_value = 1
+    availability["days"] = max(1, days_value)
+    availability.setdefault("start_date", iso(datetime.now()))
+
+    try:
+        hours_cap = min(8.0, hours_between(availability["daily_start"], availability["daily_end"]))
+    except ValueError:
+        return _json_error("availability daily_start/daily_end must be HH:MM (24h) strings.")
+    try:
+        provided_cap = float(availability.get("max_hours_per_day", hours_cap))
+    except (TypeError, ValueError):
+        provided_cap = hours_cap
+    availability["max_hours_per_day"] = min(hours_cap, provided_cap)
+
+    preferences = data.get("preferences") or {}
+
+    exams = data.get("exams")
+    if exams is not None and not isinstance(exams, list):
+        return _json_error("'exams' must be a list when provided.")
+    if exams is None:
+        exam_image_path = data.get("exam_image_path")
+        if exam_image_path:
+            try:
+                exams = extract_exams_from_image(exam_image_path)
+            except FileNotFoundError:
+                return _json_error("Exam datesheet image not found.", 404)
+            except Exception as exc:
+                print(f" Exam extraction error: {exc}")
+                return _json_error("Failed to extract exams from the provided image.", 422)
+        else:
+            exams = []
+
+    try:
+        items = generate_plan(subjects, exams, availability, preferences)
+    except RuntimeError as exc:
+        return _json_error(str(exc), 422)
+    except Exception as exc:
+        print(f" Study plan generation error: {exc}")
+        return _json_error("Unexpected error while generating the study plan.", 500)
+
+    return jsonify({
+        "ok": True,
+        "items": items,
+        "exams": exams,
+        "availability": availability,
+        "preferences": preferences,
+    })
 
 @app.errorhandler(404)
 def not_found(e):
