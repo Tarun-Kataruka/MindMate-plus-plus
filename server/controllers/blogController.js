@@ -3,6 +3,18 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import User from "../models/User.js";
+
+const CATEGORIES = [
+  "anger",
+  "depression",
+  "anxiety and panic attack",
+  "eating disorder",
+  "self esteem",
+  "self harm",
+  "stress",
+  "sleep disorder",
+];
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -67,11 +79,37 @@ export const createBlog = async (req, res) => {
         : req.file
         ? `/uploads/${req.file.filename}`
         : "";
+    // ---- AI Classification using LangChain ----
+    const model = new ChatOpenAI({
+      modelName: "gpt-4o-mini",
+      temperature: 0,
+      openAIApiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const classificationPrompt = `You are an expert mental health classifier. Read the blog content and assign EXACTLY ONE of the following categories:${CATEGORIES.join(
+      "\n"
+    )}
+    Blog:
+    Author: ${author}
+    Title: ${title}
+    Excerpt: ${excerpt}
+    Only return one category exactly as it appears in the list above. No explanation.
+    `;
+    const aiResponse = await model.invoke(classificationPrompt);
+    const category = aiResponse?.content?.trim();
+    console.log("AI Assigned Category:", category);
+    if (!CATEGORIES.includes(category)) {
+      return res.status(400).json({
+        message: "AI returned an invalid category",
+        returned: category,
+      });
+    }
     const created = await Blog.create({
       author,
       title,
-      image: imageValue,
       excerpt,
+      image: imageValue,
+      category,
     });
     res.status(201).json(created);
   } catch (err) {
