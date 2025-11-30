@@ -108,7 +108,9 @@ export const updateMe = async (req, res) => {
     }
     if (gender !== undefined) update.gender = String(gender).toLowerCase();
     if (phone !== undefined) update.phone = String(phone);
-    if (concerns !== undefined && Array.isArray(concerns)) update.concerns = concerns.map(String);
+    if (concerns !== undefined && Array.isArray(concerns)) {
+      update.concerns = concerns.map(c => String(c).toLowerCase());
+    }
     if (avatarUrl !== undefined) update.avatarUrl = String(avatarUrl);
     if (emergencyContactName !== undefined) update.emergencyContactName = String(emergencyContactName);
     if (emergencyContactPhone !== undefined) update.emergencyContactPhone = String(emergencyContactPhone);
