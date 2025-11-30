@@ -2,7 +2,10 @@ import Blog from "../models/Blog.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { ChatOpenAI } from "@langchain/openai";
+import User from "../models/User.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import dotenv from "dotenv";
+dotenv.config();
 
 const CATEGORIES = [
   "anger",
@@ -43,10 +46,14 @@ export const upload = multer({
 
 export const getBlogs = async (req, res) => {
   try {
-    const user = req.userId ? { userId: req.userId } : { _id: null };
-    console.log("User ID:", req.userId);
-    const concerns = user.concerns;
-    console.log("User Concerns:", concerns);
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const concerns = user.concerns || [];
+    if (concerns.length === 0) {
+      return res.json([]);
+    }
     const blogs = await Blog.find({ category: { $in: concerns } });
     res.json(blogs);
   } catch (err) {
@@ -65,13 +72,23 @@ export const getBlogById = async (req, res) => {
   }
 };
 
+// Initialize Gemini only if API key is available
+let genAI = null;
+if (process.env.GEMINI_BLOG_KEY) {
+  try {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_BLOG_KEY);
+  } catch (err) {
+    console.warn("Failed to initialize Gemini AI:", err);
+  }
+}
+
 export const createBlog = async (req, res) => {
   try {
     const { author, title, excerpt, image } = req.body;
     if (!author || !title || !excerpt) {
-      return res
-        .status(400)
-        .json({ message: "author, title, and excerpt are required" });
+      return res.status(400).json({
+        message: "author, title, and excerpt are required",
+      });
     }
     const imageValue =
       typeof image === "string"
@@ -79,31 +96,46 @@ export const createBlog = async (req, res) => {
         : req.file
         ? `/uploads/${req.file.filename}`
         : "";
-    // ---- AI Classification using LangChain ----
-    const model = new ChatOpenAI({
-      modelName: "gpt-4o-mini",
-      temperature: 0,
-      openAIApiKey: process.env.OPENAI_API_KEY,
-    });
 
-    const classificationPrompt = `You are an expert mental health classifier. Read the blog content and assign EXACTLY ONE of the following categories:${CATEGORIES.join(
-      "\n"
-    )}
-    Blog:
-    Author: ${author}
-    Title: ${title}
-    Excerpt: ${excerpt}
-    Only return one category exactly as it appears in the list above. No explanation.
-    `;
-    const aiResponse = await model.invoke(classificationPrompt);
-    const category = aiResponse?.content?.trim();
-    console.log("AI Assigned Category:", category);
-    if (!CATEGORIES.includes(category)) {
-      return res.status(400).json({
-        message: "AI returned an invalid category",
-        returned: category,
-      });
+    // Determine category - use Gemini if available, otherwise use first category as default
+    let category = CATEGORIES[0]; // Default fallback
+    if (genAI && process.env.GEMINI_BLOG_KEY) {
+      try {
+        console.log("Classifying blog using GEMINI...");
+        const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+
+        const prompt = `
+Classify this mental-health related blog into EXACTLY ONE category:
+
+${CATEGORIES.join("\n")}
+
+Blog Content:
+Author: ${author}
+Title: ${title}
+Excerpt: ${excerpt}
+
+Return ONLY the category EXACTLY as written in the list above.
+No explanation.
+        `;
+
+        const result = await model.generateContent(prompt);
+        const geminiCategory = result.response.text().trim().toLowerCase();
+
+        console.log("Gemini Assigned Category:", geminiCategory);
+
+        if (CATEGORIES.includes(geminiCategory)) {
+          category = geminiCategory;
+        } else {
+          console.warn("Gemini returned invalid category, using default:", geminiCategory);
+        }
+      } catch (geminiErr) {
+        console.error("Gemini classification error:", geminiErr)
+      }
+    } else {
+      console.warn("Gemini API key not configured, using default category");
     }
+
+    // Save blog
     const created = await Blog.create({
       author,
       title,
@@ -111,12 +143,14 @@ export const createBlog = async (req, res) => {
       image: imageValue,
       category,
     });
+
     res.status(201).json(created);
   } catch (err) {
-    const status = err?.message?.includes("image") ? 400 : 500;
-    res
-      .status(status)
-      .json({ message: err?.message || "Failed to create blog" });
+    console.error("ERROR CREATING BLOG:", err);
+    return res.status(500).json({
+      message: "Failed to create blog",
+      error: err.message,
+    });
   }
 };
 
