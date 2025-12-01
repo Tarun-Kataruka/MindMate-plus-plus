@@ -1,7 +1,7 @@
 # Node
-node_modules/
-npm-debug.log*
-yarn-error.log*
+node_modules
+npm-debug.log
+yarn-error.log
 
 # Expo / React Native
 .expo
@@ -10,26 +10,7 @@ yarn-error.log*
 # Mac
 .DS_Store
 
-# Windows
-Thumbs.db
-
 # Env files
 *.env
 client/*.env.local
 server/*.env
-
-# Python
-# Global virtualenvs
-venv/
-*/venv/
-# Specific chatbot venv
-server/ai_models/chatbot/venv/
-
-# Python cache
-__pycache__/
-*.py[cod]
-*.pyo
-
-# IDE / Editor
-.vscode/
-.idea/
