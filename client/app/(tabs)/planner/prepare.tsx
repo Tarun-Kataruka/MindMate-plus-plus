@@ -11,7 +11,9 @@ import {
   Modal,
   ScrollView,
   Linking,
-} from "react-native";
+  Platform,
+  ToastAndroid,
+}from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
@@ -34,6 +36,15 @@ export default function PrepareExamScreen() {
     "subject" | "materials" | "datesheets"
   >("subject");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  
+  // New planning parameters
+  const [dailyStartTime, setDailyStartTime] = useState("09:00");
+  const [dailyEndTime, setDailyEndTime] = useState("17:00");
+  const [numDays, setNumDays] = useState("30");
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
 
   const baseUrl = useMemo(
     () => (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, ""),
@@ -281,17 +292,74 @@ export default function PrepareExamScreen() {
   const createPlan = async () => {
     try {
       setLoading(true);
-      const today = new Date().toISOString();
+      // Build subject list from current subjects
+      const subjectList = subjects.map((s) => s.name).filter(Boolean);
+      if (subjectList.length === 0) {
+        Alert.alert("Error", "Please add at least one subject before planning.");
+        return;
+      }
+
+      // Validate time format
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(dailyStartTime) || !timeRegex.test(dailyEndTime)) {
+        Alert.alert("Error", "Please enter valid time format (HH:MM)");
+        return;
+      }
+      
+      // Validate number of days
+      const days = parseInt(numDays, 10);
+      if (isNaN(days) || days < 1) {
+        Alert.alert("Error", "Number of days must be at least 1");
+        return;
+      }
+      
+      // Always use today's date for planning start
+      const startDateToUse = new Date().toISOString().split("T")[0];
+      
+      // Get datesheet path if available
+      let datesheetPath = "";
+      try {
+        const datesheetRes = await fetch(`${baseUrl}/api/planner/datesheet`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const datesheets = await datesheetRes.json();
+        if (Array.isArray(datesheets) && datesheets.length > 0) {
+          datesheetPath = datesheets[0].url || "";
+        }
+      } catch {}
+      
       const res = await fetch(`${baseUrl}/api/planner/plan`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ startFrom: today }),
+        body: JSON.stringify({
+          subjects: subjectList,
+          dailyStartTime,
+          dailyEndTime,
+          numDays: days,
+          startDate: startDateToUse,
+          datesheetPath: datesheetPath || undefined,
+        }),
       });
-      if (!res.ok) throw new Error("Failed to plan");
-      Alert.alert("Plan Created", "Study plan generated from today.");
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to create plan");
+      }
+      if (Platform.OS === "android") {
+        ToastAndroid.show(
+          `Study plan created for ${days} days from ${startDateToUse}`,
+          ToastAndroid.SHORT
+        );
+      } else {
+        Alert.alert(
+          "Plan Created",
+          `Study plan generated for ${days} days starting from ${startDateToUse}.`
+        );
+      }
+      router.push("/(tabs)/planner/plan");
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Failed to create plan");
     } finally {
@@ -318,21 +386,61 @@ export default function PrepareExamScreen() {
         keyExtractor={(s) => s._id || s.id || s.name}
         ListHeaderComponent={
           <View>
-            <Text style={styles.sectionTitle}>Subjects</Text>
+            <Text style={styles.sectionTitle}>Create Study Plan</Text>
+            
             <View style={styles.row}>
-              <TextInput
-                placeholder="Add subject"
-                value={newSubject}
-                onChangeText={setNewSubject}
-                style={styles.input}
-              />
-              <TouchableOpacity style={styles.addBtn} onPress={addSubject}>
-                <Text style={styles.addBtnText}>Add</Text>
-              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionTitle, { marginTop: 12, fontSize: 14, fontWeight: '600' }]}>
+                  Daily Start Time (HH:MM)
+                </Text>
+                <TextInput
+                  placeholder="09:00"
+                  value={dailyStartTime}
+                  onChangeText={setDailyStartTime}
+                  style={styles.input}
+                />
+              </View>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={[styles.sectionTitle, { marginTop: 12, fontSize: 14, fontWeight: '600' }]}>
+                  Daily End Time (HH:MM)
+                </Text>
+                <TextInput
+                  placeholder="17:00"
+                  value={dailyEndTime}
+                  onChangeText={setDailyEndTime}
+                  style={styles.input}
+                />
+              </View>
             </View>
-
-            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
-              Upload Date Sheet
+            
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionTitle, { marginTop: 12, fontSize: 14, fontWeight: '600' }]}>
+                  Number of Days
+                </Text>
+                <TextInput
+                  placeholder="30"
+                  value={numDays}
+                  onChangeText={(text) => setNumDays(text.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  style={styles.input}
+                />
+              </View>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={[styles.sectionTitle, { marginTop: 12, fontSize: 14, fontWeight: '600' }]}>
+                  Start Date (YYYY-MM-DD)
+                </Text>
+                <TextInput
+                  placeholder="2025-12-09"
+                  value={startDate}
+                  onChangeText={setStartDate}
+                  style={styles.input}
+                />
+              </View>
+            </View>
+            
+            <Text style={[styles.sectionTitle, { marginTop: 16, fontSize: 14, fontWeight: '600' }]}>
+              Exam Datesheet (optional)
             </Text>
             <TouchableOpacity
               style={styles.actionBtn}
@@ -349,6 +457,21 @@ export default function PrepareExamScreen() {
             >
               <Text style={styles.viewBtnText}>View Date Sheets</Text>
             </TouchableOpacity>
+            
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
+              Manage Subjects (for file organization)
+            </Text>
+            <View style={styles.row}>
+              <TextInput
+                placeholder="Add subject"
+                value={newSubject}
+                onChangeText={setNewSubject}
+                style={styles.input}
+              />
+              <TouchableOpacity style={styles.addBtn} onPress={addSubject}>
+                <Text style={styles.addBtnText}>Add</Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
               Upload Materials
@@ -378,7 +501,7 @@ export default function PrepareExamScreen() {
               disabled={loading}
             >
               <Text style={styles.primaryText}>
-                {loading ? "Planning…" : "Plan from Today"}
+                {loading ? "Creating Plan…" : "Create Study Plan"}
               </Text>
             </TouchableOpacity>
           </View>

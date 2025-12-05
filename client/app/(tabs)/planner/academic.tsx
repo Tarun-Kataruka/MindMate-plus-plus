@@ -15,6 +15,13 @@ export default function AcademicPlannerScreen() {
         colors={['#6BCB77', '#4AAE63']} 
         style={styles.headerContainer}
       >
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <View style={styles.iconWrapper}>
           <Ionicons name="calendar-outline" size={85} color="#fff" />
         </View>
@@ -85,6 +92,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 80,
     marginBottom: 12,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    top: 30,
+    padding: 6,
   },
 
   headerTitle: {

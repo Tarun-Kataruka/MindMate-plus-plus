@@ -5,7 +5,7 @@ const studyItemSchema = new mongoose.Schema(
     subjectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'AcademicSubject',
-      required: true,
+      required: false,
     },
     title: {
       type: String,

@@ -271,31 +271,122 @@ export const deleteDatesheet = async (req, res) => {
 
 export const createPlan = async (req, res) => {
   try {
-    const startFrom = req.body?.startFrom ? new Date(req.body.startFrom) : new Date();
-    const subjects = await AcademicSubject.find({ userId: req.userId }).sort({ createdAt: 1 });
-    if (!subjects.length) return res.status(400).json({ message: 'Add at least one subject' });
+    const {
+      subjects: subjectsInput,
+      dailyStartTime = '09:00',
+      dailyEndTime = '17:00',
+      numDays = 1,
+      startDate,
+      datesheetPath,
+    } = req.body;
+    console.log('createPlan input:', req.body);
+    // Parse subjects - can be array or comma-separated string
+    let subjectNames = [];
+    if (Array.isArray(subjectsInput)) {
+      subjectNames = subjectsInput.map(s => String(s).trim()).filter(s => s.length > 0);
+    } else if (typeof subjectsInput === 'string') {
+      subjectNames = subjectsInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    }
+
+    if (!subjectNames.length) {
+      return res.status(400).json({ message: 'At least one subject is required' });
+    }
+
+    // Parse start date
+    const startFrom = startDate ? new Date(startDate) : new Date();
+    if (isNaN(startFrom.getTime())) {
+      return res.status(400).json({ message: 'Invalid start date format' });
+    }
+
+    // Parse times
+    const parseTime = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        throw new Error(`Invalid time format: ${timeStr}`);
+      }
+      return { hours, minutes };
+    };
+
+    let startTime, endTime;
+    try {
+      startTime = parseTime(dailyStartTime);
+      endTime = parseTime(dailyEndTime);
+    } catch (err) {
+      return res.status(400).json({ message: err.message });
+    }
+
+    // Validate number of days
+    const totalDays = parseInt(numDays, 10);
+    if (isNaN(totalDays) || totalDays < 1) {
+      return res.status(400).json({ message: 'Number of days must be at least 1' });
+    }
+
+    // Log datesheet usage
+    if (datesheetPath) {
+      console.log(`Using datesheet: ${datesheetPath}`);
+    } else {
+      console.log('No exam datesheet supplied; continuing without exam constraints.');
+    }
+
+    // Calculate available hours per day
+    const startHour = startTime.hours + startTime.minutes / 60;
+    const endHour = endTime.hours + endTime.minutes / 60;
+    const availableHours = endHour - startHour;
+    
+    if (availableHours <= 0) {
+      return res.status(400).json({ message: 'End time must be after start time' });
+    }
+
+    // Calculate study block duration (distribute subjects evenly across available time)
+    const blockHours = Math.max(1, Math.floor((availableHours / subjectNames.length) * 60) / 60); // At least 1 hour
 
     const items = [];
-    const totalDays = 7; 
-    const blockHours = 2;
-    let cursor = new Date(startFrom);
+    let currentDate = new Date(startFrom);
+    currentDate.setHours(startTime.hours, startTime.minutes, 0, 0);
+
     for (let d = 0; d < totalDays; d++) {
-      for (const s of subjects) {
-        const start = new Date(cursor);
-        const end = new Date(cursor);
-        end.setHours(end.getHours() + blockHours);
-        items.push({ subjectId: s._id, title: `Study ${s.name}`, start, end, completed: false });
-        cursor = new Date(end);
+      const dayStart = new Date(currentDate);
+      dayStart.setHours(startTime.hours, startTime.minutes, 0, 0);
+      
+      let dayCursor = new Date(dayStart);
+      
+      for (const subjectName of subjectNames) {
+        // Check if we've exceeded the daily end time
+        const currentHour = dayCursor.getHours() + dayCursor.getMinutes() / 60;
+        if (currentHour + blockHours > endHour) {
+          break; // Skip remaining subjects for this day
+        }
+
+        const start = new Date(dayCursor);
+        const end = new Date(dayCursor);
+        end.setHours(end.getHours() + Math.floor(blockHours));
+        end.setMinutes(end.getMinutes() + Math.round((blockHours % 1) * 60));
+
+        items.push({
+          subjectId: null, // No longer tied to AcademicSubject model
+          title: `Study ${subjectName}`,
+          start,
+          end,
+          completed: false,
+        });
+
+        dayCursor = new Date(end);
       }
-      cursor.setDate(cursor.getDate() + 1);
-      cursor.setHours(9, 0, 0, 0);
+
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+      currentDate.setHours(startTime.hours, startTime.minutes, 0, 0);
+    }
+
+    if (items.length === 0) {
+      return res.status(400).json({ message: 'No study items could be created with the given parameters' });
     }
 
     const plan = await StudyPlan.create({ userId: req.userId, items });
     res.status(201).json(plan);
   } catch (err) {
     console.error('createPlan error:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error', error: err.message });
   }
 };
 
