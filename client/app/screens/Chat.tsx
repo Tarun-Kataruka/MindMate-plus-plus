@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 type Message = {
   id: string;
@@ -8,8 +9,9 @@ type Message = {
 };
 
 export default function Chat() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([
-    { id: 'welcome', role: 'bot', text: "Hi! I'm Mate. How can I help today?" },
+    { id: 'welcome', role: 'bot', text: t("chat.welcomeMessage") },
   ]);
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList<Message>>(null);
@@ -91,7 +93,7 @@ export default function Chat() {
         throw new Error(err?.error || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      const replyText = (data?.reply as string) || "I'm here with you. Could you share a bit more?";
+      const replyText = (data?.reply as string) || t("chat.welcomeMessage");
       const reply: Message = { 
         id: String(Date.now() + 1), 
         role: 'bot', 
@@ -106,11 +108,11 @@ export default function Chat() {
       setMessages(prev => [...prev, reply]);
       listRef.current?.scrollToEnd({ animated: true });
     } catch (e: any) {
-      const errMsg = typeof e?.message === 'string' ? e.message : 'Something went wrong. Please try again.';
+      const errMsg = typeof e?.message === 'string' ? e.message : t("chat.errorMessage");
       const reply: Message = { 
         id: String(Date.now() + 1), 
         role: 'bot', 
-        text: `I'm having trouble connecting right now, but I'm here with you. ${errMsg.includes('HTTP') ? 'Please try again in a moment.' : ''}` 
+        text: `${t("chat.errorMessage")} ${errMsg.includes('HTTP') ? t("chat.tryAgain") : ''}` 
       };
       setMessages(prev => [...prev, reply]);
       listRef.current?.scrollToEnd({ animated: true });
@@ -131,7 +133,7 @@ export default function Chat() {
         <TouchableOpacity style={styles.menuBtn} onPress={() => setDrawerOpen(v => !v)}>
           <Text style={styles.menuIcon}>☰</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mate</Text>
+        <Text style={styles.headerTitle}>{t("chat.title")}</Text>
         <View style={{ width: 40 }} />
       </View>
       <FlatList
@@ -144,7 +146,7 @@ export default function Chat() {
       />
       {drawerOpen ? (
         <View style={styles.drawer}>
-          <Text style={styles.drawerTitle}>History</Text>
+          <Text style={styles.drawerTitle}>{t("chat.history")}</Text>
           <FlatList
             data={Object.keys(historyByDate).sort()}
             keyExtractor={(k) => k}
@@ -170,7 +172,7 @@ export default function Chat() {
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
-          placeholder="Type a message..."
+          placeholder={t("chat.typeMessage")}
           value={input}
           onChangeText={setInput}
           onSubmitEditing={send}
@@ -182,7 +184,7 @@ export default function Chat() {
           </View>
         ) : null}
         <TouchableOpacity onPress={send} style={styles.sendBtn}>
-          <Text style={styles.sendText}>Send</Text>
+          <Text style={styles.sendText}>{t("chat.send")}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

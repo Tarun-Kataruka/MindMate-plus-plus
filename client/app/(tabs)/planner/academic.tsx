@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 export default function AcademicPlannerScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   return (
@@ -26,16 +28,16 @@ export default function AcademicPlannerScreen() {
           <Ionicons name="calendar-outline" size={85} color="#fff" />
         </View>
 
-        <Text style={styles.headerTitle}>Academic Planner</Text>
+        <Text style={styles.headerTitle}>{t("planner.academicPlanner")}</Text>
         <Text style={styles.headerSubtitle}>
-          Plan your study. Track your progress. Stay ahead.
+          {t("planner.subtitle")}
         </Text>
       </LinearGradient>
 
       {/* Glass Panel */}
       <View style={styles.card}>
         <Text style={styles.description}>
-          Organize your subjects, upload notes, create a study plan, and sync everything seamlessly with your schedule.
+          {t("planner.description")}
         </Text>
 
         <TouchableOpacity
@@ -43,7 +45,7 @@ export default function AcademicPlannerScreen() {
           onPress={() => router.push('/(tabs)/planner/prepare')}
           activeOpacity={0.85}
         >
-          <Text style={styles.primaryText}>Prepare for Exam</Text>
+          <Text style={styles.primaryText}>{t("planner.prepareForExam")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -51,7 +53,7 @@ export default function AcademicPlannerScreen() {
           onPress={() => router.push('/(tabs)/planner/plan')}
           activeOpacity={0.85}
         >
-          <Text style={styles.secondaryText}>View Study Plan</Text>
+          <Text style={styles.secondaryText}>{t("planner.viewStudyPlan")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -59,7 +61,7 @@ export default function AcademicPlannerScreen() {
       <View style={styles.disclaimerBox}>
         <Ionicons name="warning-outline" size={22} color="#8a6d00" style={{ marginRight: 8 }} />
         <Text style={styles.disclaimerText}>
-          Study schedules are AI-generated for guidance only. Your progress depends on your own effort and consistency. For academic or mental health concerns, please consult a qualified professional.
+          {t("planner.disclaimer")}
         </Text>
       </View>
 

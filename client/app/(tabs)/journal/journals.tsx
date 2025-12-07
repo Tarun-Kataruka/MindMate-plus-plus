@@ -10,10 +10,12 @@ import {
 import { Colors } from "@/constants/theme";
 import JournalTab from "../../../components/journal/JournalTab";
 import BlogTab from "../../../components/journal/BlogTab";
+import { useTranslation } from "react-i18next";
 
 type TabKey = "BLOGS" | "JOURNALS";
 
 export default function JournalsMainScreen() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("JOURNALS");
   const [journals, setJournals] = useState<any[]>([]);
   const [blogs, setBlogs] = useState<any[]>([]);
@@ -46,7 +48,7 @@ export default function JournalsMainScreen() {
           setBlogs(Array.isArray(data) ? data : []);
         }
       } catch (e: any) {
-        setError("Failed to load data");
+        setError(t("journal.failedToLoad"));
         console.error("Failed to fetch tabs data:", e?.message || e);
       } finally {
         setLoading(false);
@@ -85,7 +87,7 @@ export default function JournalsMainScreen() {
                 <Text
                   style={[styles.tabText, isActive && styles.activeTabText]}
                 >
-                  {tab}
+                  {tab === "JOURNALS" ? t("journal.journals") : t("journal.blogs")}
                 </Text>
                 {isActive && <View style={styles.activeUnderline} />}
               </View>

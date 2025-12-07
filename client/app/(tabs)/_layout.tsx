@@ -4,8 +4,10 @@ import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 export default function TabLayout() {
+  const { t } = useTranslation();
   const INACTIVE_COLOR = "rgba(255, 255, 255, 0.7)";
   const ACTIVE_COLOR = "#ffffff";
 
@@ -31,7 +33,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("tabs.home"),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
           ),
@@ -40,7 +42,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="journal/journals"
         options={{
-          title: "Journal",
+          title: t("tabs.journal"),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="book.fill" color={color} />
           ),
@@ -49,7 +51,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="therapist/therapists"
         options={{
-          title: "Therapist",
+          title: t("tabs.therapist"),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="person.2.fill" color={color} />
           ),
@@ -59,25 +61,25 @@ export default function TabLayout() {
       <Tabs.Screen
         name="planner/academic"
         options={{
-          title: "Planner",
+          title: t("tabs.planner"),
           tabBarIcon: ({ color }) => (
             <Ionicons name="calendar" size={28} color={color} />
           ),
         }}
       />
       {/* Hidden planner screens */}
-      <Tabs.Screen name="planner/prepare" options={{ href: null, title: "Prepare" }} />
-      <Tabs.Screen name="planner/plan" options={{ href: null, title: "Plan" }} />
+      <Tabs.Screen name="planner/prepare" options={{ href: null, title: t("tabs.prepare") }} />
+      <Tabs.Screen name="planner/plan" options={{ href: null, title: t("tabs.plan") }} />
       {/* Hidden screens */}
       <Tabs.Screen
         name="profile/profile"
-        options={{ href: null, title: "Profile" }}
+        options={{ href: null, title: t("tabs.profile") }}
       />
       <Tabs.Screen
         name="profile/edit"
-        options={{ href: null, title: "Edit Profile" }}
+        options={{ href: null, title: t("tabs.editProfile") }}
       />
-      <Tabs.Screen name="chat" options={{ href: null, title: "Chat" }} />
+      <Tabs.Screen name="chat" options={{ href: null, title: t("tabs.chat") }} />
     </Tabs>
   );
 }

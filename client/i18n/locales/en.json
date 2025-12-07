@@ -1,4 +1,73 @@
 {
+  "tabs": {
+    "home": "Home",
+    "journal": "Journal",
+    "therapist": "Therapist",
+    "planner": "Planner",
+    "profile": "Profile",
+    "editProfile": "Edit Profile",
+    "chat": "Chat",
+    "prepare": "Prepare",
+    "plan": "Plan"
+  },
+  "home": {
+    "hello": "Hello !",
+    "friend": "Friend",
+    "imMate": "I'M Mate",
+    "letsTalk": "LET'S TALK",
+    "quoteOfTheDay": "QUOTE OF THE DAY",
+    "tracksToRefresh": "TRACKS TO REFRESH YOUR MOOD!"
+  },
+  "tracks": {
+    "favorites": "Favorites",
+    "yogaMeditation": "Yoga & Meditation",
+    "mindBody": "Mind & Body",
+    "asmrSounds": "ASMR Sounds",
+    "breathingExercises": "Breathing Exercises",
+    "focusProductivity": "Focus & Productivity Music",
+    "affirmationsPositivity": "Affirmations & Positivity"
+  },
+  "chat": {
+    "title": "Mate",
+    "welcomeMessage": "Hi! I'm Mate. How can I help today?",
+    "history": "History",
+    "typeMessage": "Type a message...",
+    "send": "Send",
+    "errorMessage": "I'm having trouble connecting right now, but I'm here with you.",
+    "tryAgain": "Please try again in a moment."
+  },
+  "journal": {
+    "journals": "JOURNALS",
+    "blogs": "BLOGS",
+    "hiThere": "Hi there!",
+    "newJournal": "New Journal",
+    "title": "Title",
+    "summary": "Summary",
+    "save": "Save",
+    "delete": "Delete",
+    "failedToLoad": "Failed to load data"
+  },
+  "blog": {
+    "newBlog": "New Blog",
+    "author": "Author",
+    "title": "Title",
+    "imageUrl": "Image URL (https://...)",
+    "excerpt": "Excerpt",
+    "save": "Save"
+  },
+  "planner": {
+    "academicPlanner": "Academic Planner",
+    "subtitle": "Plan your study. Track your progress. Stay ahead.",
+    "description": "Organize your subjects, upload notes, create a study plan, and sync everything seamlessly with your schedule.",
+    "prepareForExam": "Prepare for Exam",
+    "viewStudyPlan": "View Study Plan",
+    "disclaimer": "Study schedules are AI-generated for guidance only. Your progress depends on your own effort and consistency. For academic or mental health concerns, please consult a qualified professional."
+  },
+  "therapist": {
+    "findYourTherapist": "Find Your Therapist",
+    "subtitle": "Connect with licensed professionals for support and guidance.",
+    "infoText": "This screen will feature filtering, search, and therapist profiles."
+  },
   "profile": {
     "title": "Profile",
     "editProfile": "Edit Profile",

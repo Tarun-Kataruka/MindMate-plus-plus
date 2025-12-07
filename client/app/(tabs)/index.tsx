@@ -11,11 +11,13 @@ import QuoteOfTheDay from "../../components/QuoteOfTheDay";
 import { router } from "expo-router";
 import TracksSection from "../../components/TracksSection";
 import { useFocusEffect } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 
 const DEFAULT_AVATAR = "https://img.icons8.com/ios-filled/100/000000/user-male-circle.png";
 const BOT_GIF = require("../../assets/tink.gif");
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const [firstName, setFirstName] = useState<string>("");
   const [avatarUrl, setAvatarUrl] = useState<string>(DEFAULT_AVATAR);
   const API_BASE = (((process.env.EXPO_PUBLIC_API_URL as string) || '').replace(/\/?$/, '/'));
@@ -52,8 +54,8 @@ export default function HomeScreen() {
       contentContainerStyle={styles.contentContainer}
     >
       <View style={styles.headerBg}>
-        <Text style={styles.greeting}>Hello !</Text>
-        <Text style={styles.name}>{firstName || "Friend"}</Text>
+        <Text style={styles.greeting}>{t("home.hello")}</Text>
+        <Text style={styles.name}>{firstName || t("home.friend")}</Text>
         <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push('/(tabs)/profile/profile')} activeOpacity={0.8}>
           <Image source={{ uri: avatarUrl }} style={styles.avatar} />
         </TouchableOpacity>
@@ -62,15 +64,15 @@ export default function HomeScreen() {
       <View style={styles.botSection}>
         <Image source={BOT_GIF} style={styles.botImage} />
         <View style={styles.botTextBlock}>
-          <Text style={styles.botLabel}>I&apos;M Mate</Text>
+          <Text style={styles.botLabel}>{t("home.imMate")}</Text>
           <TouchableOpacity style={styles.talkBtn} onPress={() => router.push('/(tabs)/chat')}>
-            <Text style={styles.talkBtnText}>LET&apos;S TALK</Text>
+            <Text style={styles.talkBtnText}>{t("home.letsTalk")}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.quoteBlock}>
-        <Text style={styles.quoteLabel}>QUOTE OF THE DAY</Text>
+        <Text style={styles.quoteLabel}>{t("home.quoteOfTheDay")}</Text>
         <View style={styles.quoteBg}>
           <QuoteOfTheDay apiBaseUrl={process.env.EXPO_PUBLIC_API_URL} />
         </View>
