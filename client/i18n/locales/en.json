@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "title": "Profile",
+    "editProfile": "Edit Profile",
+    "gender": "Gender",
+    "age": "yrs. old",
+    "myConcerns": "My Concerns:",
+    "termsAndConditions": "Terms & Conditions",
+    "logout": "Logout",
+    "emergency": "Emergency",
+    "male": "Male",
+    "female": "Female",
+    "other": "Other"
+  },
+  "editProfile": {
+    "title": "Edit Profile",
+    "fullname": "Fullname",
+    "email": "Email",
+    "gender": "Gender:",
+    "phone": "Phone no.",
+    "age": "Age",
+    "myConcerns": "My Concerns:",
+    "emergencyContact": "Emergency Contact",
+    "contactName": "Contact name",
+    "contactPhone": "Contact phone",
+    "saveChanges": "SAVE CHANGES",
+    "selectLanguage": "Select Language",
+    "language": "Language"
+  },
+  "concerns": {
+    "anger": "Anger",
+    "anxiety": "Anxiety and Panic Attacks",
+    "depression": "Depression",
+    "eatingDisorder": "Eating disorders",
+    "selfEsteem": "Self-esteem",
+    "selfHarm": "Self-harm",
+    "stress": "Stress",
+    "sleepDisorder": "Sleep disorders"
+  },
+  "languages": {
+    "english": "English",
+    "hindi": "Hindi",
+    "tamil": "Tamil",
+    "telugu": "Telugu",
+    "kannada": "Kannada"
+  }
+}

@@ -9,10 +9,13 @@ import {
   TextInput,
   Platform,
   Alert,
+  Modal,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser, UserData } from "./profile";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 const Colors = {
   primary: "#77C272",
   secondary: "#388e3c",
@@ -23,18 +26,27 @@ const Colors = {
   yellow: "#FFC107",
 };
 
-const initialConcerns = [
-  "Anger",
-  "Anxiety and Panic Attacks",
-  "Depression",
-  "Eating disorders",
-  "Self-esteem",
-  "Self-harm",
-  "Stress",
-  "Sleep disorders",
+const concernKeys = [
+  "anger",
+  "anxiety",
+  "depression",
+  "eatingDisorder",
+  "selfEsteem",
+  "selfHarm",
+  "stress",
+  "sleepDisorder",
+];
+
+const languages = [
+  { code: "en", name: "English" },
+  { code: "hi", name: "Hindi" },
+  { code: "ta", name: "Tamil" },
+  { code: "te", name: "Telugu" },
+  { code: "kn", name: "Kannada" },
 ];
 
 export default function EditProfileScreen() {
+  const { t } = useTranslation();
   const API_BASE = ((process.env.EXPO_PUBLIC_API_URL as string) || "").replace(
     /\/?$/,
     "/"
@@ -54,6 +66,8 @@ export default function EditProfileScreen() {
   const [emergencyContactPhone, setEmergencyContactPhone] = useState(
     String(userData.emergencyContactPhone || "")
   );
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   useEffect(() => {
     const load = async () => {
       try {
@@ -76,6 +90,10 @@ export default function EditProfileScreen() {
           setEmergencyContactPhone(
             String(data.user.emergencyContactPhone || "")
           );
+          if (data.user.language) {
+            setSelectedLanguage(data.user.language);
+            i18n.changeLanguage(data.user.language);
+          }
           if (data.user.avatarUrl) {
             (EditProfileScreen as any).pendingAvatarUrl = String(
               data.user.avatarUrl
@@ -93,6 +111,12 @@ export default function EditProfileScreen() {
         ? prev.filter((c) => c !== concern)
         : [...prev, concern]
     );
+  };
+
+  const handleLanguageChange = async (langCode: string) => {
+    setSelectedLanguage(langCode);
+    setShowLanguageDropdown(false);
+    i18n.changeLanguage(langCode);
   };
 
   const handleSaveChanges = async () => {
@@ -125,6 +149,7 @@ export default function EditProfileScreen() {
             avatarUrl: (EditProfileScreen as any).pendingAvatarUrl,
             emergencyContactName: newUserData.emergencyContactName,
             emergencyContactPhone: newUserData.emergencyContactPhone,
+            language: selectedLanguage,
           }),
         });
       }
@@ -149,7 +174,7 @@ export default function EditProfileScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={28} color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerText}>Edit Profile</Text>
+        <Text style={styles.headerText}>{t("editProfile.title")}</Text>
         <View style={{ width: 28 }} /> {/* Spacer for symmetry */}
       </View>
 
@@ -203,10 +228,32 @@ export default function EditProfileScreen() {
 
       {/* Form Inputs */}
       <View style={styles.formContainer}>
+        {/* Language Selector */}
+        <View style={styles.languageSelector}>
+          <Text style={styles.radioLabel}>{t("editProfile.selectLanguage")}:</Text>
+          <TouchableOpacity
+            style={styles.languageButton}
+            onPress={() => setShowLanguageDropdown(true)}
+          >
+            <Text style={styles.languageButtonText}>
+              {(() => {
+                const lang = languages.find((l) => l.code === selectedLanguage);
+                if (!lang) return "English";
+                const langKey = lang.code === "en" ? "english" : 
+                               lang.code === "hi" ? "hindi" : 
+                               lang.code === "ta" ? "tamil" : 
+                               lang.code === "te" ? "telugu" : "kannada";
+                return t(`languages.${langKey}`);
+              })()}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={Colors.secondary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Fullname Input */}
         <InputWithIcon
           iconName="person-outline"
-          placeholder="Fullname"
+          placeholder={t("editProfile.fullname")}
           value={fullName}
           onChangeText={setFullName}
         />
@@ -214,7 +261,7 @@ export default function EditProfileScreen() {
         {/* Email (now editable) */}
         <InputWithIcon
           iconName="mail-outline"
-          placeholder="Email"
+          placeholder={t("editProfile.email")}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -225,19 +272,19 @@ export default function EditProfileScreen() {
 
         {/* Gender Selection */}
         <View style={styles.genderRow}>
-          <Text style={styles.radioLabel}>Gender:</Text>
+          <Text style={styles.radioLabel}>{t("editProfile.gender")}</Text>
           <RadioButton
-            label="Male"
+            label={t("profile.male")}
             selected={gender === "male"}
             onPress={() => setGender("male")}
           />
           <RadioButton
-            label="Female"
+            label={t("profile.female")}
             selected={gender === "female"}
             onPress={() => setGender("female")}
           />
           <RadioButton
-            label="Other"
+            label={t("profile.other")}
             selected={gender === "other"}
             onPress={() => setGender("other")}
           />
@@ -265,7 +312,7 @@ export default function EditProfileScreen() {
             />
             <TextInput
               style={styles.textInputFull}
-              placeholder="Phone no."
+              placeholder={t("editProfile.phone")}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -291,7 +338,7 @@ export default function EditProfileScreen() {
             />
             <TextInput
               style={[styles.textInputFull, { textAlign: "center" }]}
-              placeholder="Age"
+              placeholder={t("editProfile.age")}
               value={age}
               onChangeText={setAge}
               keyboardType="numeric"
@@ -301,30 +348,39 @@ export default function EditProfileScreen() {
         </View>
 
         {/* Concerns Checkbox Section */}
-        <Text style={styles.sectionTitle}>My Concerns:</Text>
+        <Text style={styles.sectionTitle}>{t("editProfile.myConcerns")}</Text>
         <View style={styles.concernsGrid}>
-          {initialConcerns.map((concern, index) => (
-            <CheckboxItem
-              text={concern}
-              selected={selectedConcerns.includes(concern)}
-              onPress={() => toggleConcern(concern)}
-              key={index} // Use index as key here, safe for static lists
-            />
-          ))}
+          {concernKeys.map((concernKey, index) => {
+            const concernText = t(`concerns.${concernKey}`);
+            const concernKeyMapped = concernKey === "eatingDisorder" ? "Eating disorders" :
+              concernKey === "selfEsteem" ? "Self-esteem" :
+              concernKey === "selfHarm" ? "Self-harm" :
+              concernKey === "sleepDisorder" ? "Sleep disorders" :
+              concernKey === "anxiety" ? "Anxiety and Panic Attacks" :
+              concernKey.charAt(0).toUpperCase() + concernKey.slice(1);
+            return (
+              <CheckboxItem
+                text={concernText}
+                selected={selectedConcerns.includes(concernKeyMapped)}
+                onPress={() => toggleConcern(concernKeyMapped)}
+                key={index}
+              />
+            );
+          })}
         </View>
       </View>
 
       {/* Emergency Contact Section */}
-      <Text style={styles.sectionTitle}>Emergency Contact</Text>
+      <Text style={styles.sectionTitle}>{t("editProfile.emergencyContact")}</Text>
       <InputWithIcon
         iconName="people-outline"
-        placeholder="Contact name"
+        placeholder={t("editProfile.contactName")}
         value={emergencyContactName}
         onChangeText={setEmergencyContactName}
       />
       <InputWithIcon
         iconName="call-outline"
-        placeholder="Contact phone"
+        placeholder={t("editProfile.contactPhone")}
         value={emergencyContactPhone}
         onChangeText={setEmergencyContactPhone}
         keyboardType="phone-pad"
@@ -332,8 +388,54 @@ export default function EditProfileScreen() {
 
       {/* Save Changes Button */}
       <TouchableOpacity onPress={handleSaveChanges} style={styles.saveButton}>
-        <Text style={styles.saveButtonText}>SAVE CHANGES</Text>
+        <Text style={styles.saveButtonText}>{t("editProfile.saveChanges")}</Text>
       </TouchableOpacity>
+
+      {/* Language Dropdown Modal */}
+      <Modal
+        visible={showLanguageDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLanguageDropdown(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLanguageDropdown(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t("editProfile.selectLanguage")}</Text>
+            {languages.map((lang) => {
+              const langKey = lang.code === "en" ? "english" : 
+                             lang.code === "hi" ? "hindi" : 
+                             lang.code === "ta" ? "tamil" : 
+                             lang.code === "te" ? "telugu" : "kannada";
+              return (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[
+                    styles.languageOption,
+                    selectedLanguage === lang.code && styles.languageOptionSelected,
+                  ]}
+                  onPress={() => handleLanguageChange(lang.code)}
+                >
+                  <Text
+                    style={[
+                      styles.languageOptionText,
+                      selectedLanguage === lang.code && styles.languageOptionTextSelected,
+                    ]}
+                  >
+                    {t(`languages.${langKey}`)}
+                  </Text>
+                  {selectedLanguage === lang.code && (
+                    <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
       <View style={{ height: 100 }} />
     </ScrollView>
   );
@@ -538,6 +640,75 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     letterSpacing: 1,
+  },
+  languageSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGrey,
+    paddingBottom: 15,
+  },
+  languageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+    borderRadius: 8,
+    minWidth: 150,
+    justifyContent: "space-between",
+  },
+  languageButtonText: {
+    color: Colors.secondary,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 20,
+    width: "80%",
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Colors.secondary,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  languageOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
+  },
+  languageOptionSelected: {
+    backgroundColor: "#E8F5E9",
+    borderColor: Colors.primary,
+  },
+  languageOptionText: {
+    fontSize: 16,
+    color: Colors.black,
+  },
+  languageOptionTextSelected: {
+    color: Colors.secondary,
+    fontWeight: "600",
   },
 });
 

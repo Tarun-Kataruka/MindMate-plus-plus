@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "title": "சுயவிவரம்",
+    "editProfile": "சுயவிவரத்தைத் திருத்தவும்",
+    "gender": "பாலினம்",
+    "age": "வயது",
+    "myConcerns": "எனது கவலைகள்:",
+    "termsAndConditions": "விதிமுறைகள் மற்றும் நிபந்தனைகள்",
+    "logout": "வெளியேறு",
+    "emergency": "அவசர",
+    "male": "ஆண்",
+    "female": "பெண்",
+    "other": "மற்றவை"
+  },
+  "editProfile": {
+    "title": "சுயவிவரத்தைத் திருத்தவும்",
+    "fullname": "முழு பெயர்",
+    "email": "மின்னஞ்சல்",
+    "gender": "பாலினம்:",
+    "phone": "தொலைபேசி எண்",
+    "age": "வயது",
+    "myConcerns": "எனது கவலைகள்:",
+    "emergencyContact": "அவசரத் தொடர்பு",
+    "contactName": "தொடர்பு பெயர்",
+    "contactPhone": "தொடர்பு தொலைபேசி",
+    "saveChanges": "மாற்றங்களைச் சேமிக்கவும்",
+    "selectLanguage": "மொழியைத் தேர்ந்தெடுக்கவும்",
+    "language": "மொழி"
+  },
+  "concerns": {
+    "anger": "கோபம்",
+    "anxiety": "கவலை மற்றும் பீதி தாக்குதல்கள்",
+    "depression": "மனச்சோர்வு",
+    "eatingDisorder": "உணவு கோளாறுகள்",
+    "selfEsteem": "சுயமரியாதை",
+    "selfHarm": "சுய தீங்கு",
+    "stress": "மன அழுத்தம்",
+    "sleepDisorder": "தூக்கக் கோளாறுகள்"
+  },
+  "languages": {
+    "english": "ஆங்கிலம்",
+    "hindi": "இந்தி",
+    "tamil": "தமிழ்",
+    "telugu": "தெலுங்கு",
+    "kannada": "கன்னடம்"
+  }
+}

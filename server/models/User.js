@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
     emergencyContactPhone: { type: String, trim: true },
     concerns: { type: [String], default: [] },
     avatarUrl: { type: String, trim: true },
+    language: { type: String, enum: ['en', 'hi', 'ta', 'te', 'kn'], default: 'en' },
     google: {
       refreshToken: { type: String },
       accessToken: { type: String },

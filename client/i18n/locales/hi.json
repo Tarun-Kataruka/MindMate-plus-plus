@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "title": "प्रोफ़ाइल",
+    "editProfile": "प्रोफ़ाइल संपादित करें",
+    "gender": "लिंग",
+    "age": "वर्ष का",
+    "myConcerns": "मेरी चिंताएं:",
+    "termsAndConditions": "नियम और शर्तें",
+    "logout": "लॉगआउट",
+    "emergency": "आपातकाल",
+    "male": "पुरुष",
+    "female": "महिला",
+    "other": "अन्य"
+  },
+  "editProfile": {
+    "title": "प्रोफ़ाइल संपादित करें",
+    "fullname": "पूरा नाम",
+    "email": "ईमेल",
+    "gender": "लिंग:",
+    "phone": "फ़ोन नंबर",
+    "age": "उम्र",
+    "myConcerns": "मेरी चिंताएं:",
+    "emergencyContact": "आपातकालीन संपर्क",
+    "contactName": "संपर्क नाम",
+    "contactPhone": "संपर्क फ़ोन",
+    "saveChanges": "परिवर्तन सहेजें",
+    "selectLanguage": "भाषा चुनें",
+    "language": "भाषा"
+  },
+  "concerns": {
+    "anger": "क्रोध",
+    "anxiety": "चिंता और पैनिक अटैक",
+    "depression": "अवसाद",
+    "eatingDisorder": "खाने की विकार",
+    "selfEsteem": "आत्म-सम्मान",
+    "selfHarm": "आत्म-हानि",
+    "stress": "तनाव",
+    "sleepDisorder": "नींद की विकार"
+  },
+  "languages": {
+    "english": "अंग्रेजी",
+    "hindi": "हिंदी",
+    "tamil": "तमिल",
+    "telugu": "तेलुगू",
+    "kannada": "कन्नड़"
+  }
+}

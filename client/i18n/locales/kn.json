@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "title": "ಪ್ರೊಫೈಲ್",
+    "editProfile": "ಪ್ರೊಫೈಲ್ ಸಂಪಾದಿಸಿ",
+    "gender": "ಲಿಂಗ",
+    "age": "ವರ್ಷಗಳು",
+    "myConcerns": "ನನ್ನ ಕಾಳಜಿಗಳು:",
+    "termsAndConditions": "ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು",
+    "logout": "ಲಾಗ್ ಔಟ್",
+    "emergency": "ಅತ್ಯಾವಶ್ಯಕ",
+    "male": "ಪುರುಷ",
+    "female": "ಸ್ತ್ರೀ",
+    "other": "ಇತರೆ"
+  },
+  "editProfile": {
+    "title": "ಪ್ರೊಫೈಲ್ ಸಂಪಾದಿಸಿ",
+    "fullname": "ಪೂರ್ಣ ಹೆಸರು",
+    "email": "ಇಮೇಲ್",
+    "gender": "ಲಿಂಗ:",
+    "phone": "ಫೋನ್ ಸಂಖ್ಯೆ",
+    "age": "ವಯಸ್ಸು",
+    "myConcerns": "ನನ್ನ ಕಾಳಜಿಗಳು:",
+    "emergencyContact": "ಅತ್ಯಾವಶ್ಯಕ ಸಂಪರ್ಕ",
+    "contactName": "ಸಂಪರ್ಕ ಹೆಸರು",
+    "contactPhone": "ಸಂಪರ್ಕ ಫೋನ್",
+    "saveChanges": "ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ",
+    "selectLanguage": "ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "language": "ಭಾಷೆ"
+  },
+  "concerns": {
+    "anger": "ಕೋಪ",
+    "anxiety": "ಆತಂಕ ಮತ್ತು ಭಯಾಂದೋಲನ ದಾಳಿಗಳು",
+    "depression": "ಖಿನ್ನತೆ",
+    "eatingDisorder": "ಆಹಾರ ಅಸ್ವಸ್ಥತೆಗಳು",
+    "selfEsteem": "ಸ್ವಯಂ ಗೌರವ",
+    "selfHarm": "ಸ್ವಯಂ ಹಾನಿ",
+    "stress": "ಒತ್ತಡ",
+    "sleepDisorder": "ನಿದ್ರೆ ಅಸ್ವಸ್ಥತೆಗಳು"
+  },
+  "languages": {
+    "english": "ಇಂಗ್ಲೀಷ್",
+    "hindi": "ಹಿಂದಿ",
+    "tamil": "ತಮಿಳು",
+    "telugu": "ತೆಲುಗು",
+    "kannada": "ಕನ್ನಡ"
+  }
+}

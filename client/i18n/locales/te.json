@@ -1,0 +1,47 @@
+{
+  "profile": {
+    "title": "ప్రొఫైల్",
+    "editProfile": "ప్రొఫైల్ సవరించు",
+    "gender": "లింగం",
+    "age": "సంవత్సరాలు",
+    "myConcerns": "నా ఆందోళనలు:",
+    "termsAndConditions": "నిబంధనలు మరియు షరతులు",
+    "logout": "లాగ్అవుట్",
+    "emergency": "అత్యవసర",
+    "male": "పురుషుడు",
+    "female": "స్త్రీ",
+    "other": "ఇతరులు"
+  },
+  "editProfile": {
+    "title": "ప్రొఫైల్ సవరించు",
+    "fullname": "పూర్తి పేరు",
+    "email": "ఇమెయిల్",
+    "gender": "లింగం:",
+    "phone": "ఫోన్ నంబర్",
+    "age": "వయసు",
+    "myConcerns": "నా ఆందోళనలు:",
+    "emergencyContact": "అత్యవసర సంప్రదింపు",
+    "contactName": "సంప్రదింపు పేరు",
+    "contactPhone": "సంప్రదింపు ఫోన్",
+    "saveChanges": "మార్పులను సేవ్ చేయి",
+    "selectLanguage": "భాషను ఎంచుకోండి",
+    "language": "భాష"
+  },
+  "concerns": {
+    "anger": "కోపం",
+    "anxiety": "ఆందోళన మరియు భయాందోళన దాడులు",
+    "depression": "అవసాదం",
+    "eatingDisorder": "ఆహార రుగ్మతలు",
+    "selfEsteem": "స్వీయ గౌరవం",
+    "selfHarm": "స్వీయ హాని",
+    "stress": "ఒత్తిడి",
+    "sleepDisorder": "నిద్ర రుగ్మతలు"
+  },
+  "languages": {
+    "english": "ఆంగ్లం",
+    "hindi": "హిందీ",
+    "tamil": "తమిళం",
+    "telugu": "తెలుగు",
+    "kannada": "కన్నడ"
+  }
+}

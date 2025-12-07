@@ -74,7 +74,7 @@ export const login = async (req, res) => {
 
 export const me = async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('name email age gender phone emergencyContactName emergencyContactPhone concerns avatarUrl');
+    const user = await User.findById(req.userId).select('name email age gender phone emergencyContactName emergencyContactPhone concerns avatarUrl language');
     if (!user) return res.status(404).json({ message: 'User not found' });
     return res.json({
       user: {
@@ -88,6 +88,7 @@ export const me = async (req, res) => {
         emergencyContactPhone: user.emergencyContactPhone || null,
         concerns: user.concerns || [],
         avatarUrl: user.avatarUrl || null,
+        language: user.language || 'en',
       },
     });
   } catch (err) {
@@ -98,7 +99,7 @@ export const me = async (req, res) => {
 
 export const updateMe = async (req, res) => {
   try {
-    const { name, age, gender, phone, concerns, email, avatarUrl, emergencyContactName, emergencyContactPhone } = req.body || {};
+    const { name, age, gender, phone, concerns, email, avatarUrl, emergencyContactName, emergencyContactPhone, language } = req.body || {};
     const update = {};
     if (name !== undefined) update.name = String(name);
     if (email !== undefined) update.email = String(email).toLowerCase();
@@ -114,8 +115,14 @@ export const updateMe = async (req, res) => {
     if (avatarUrl !== undefined) update.avatarUrl = String(avatarUrl);
     if (emergencyContactName !== undefined) update.emergencyContactName = String(emergencyContactName);
     if (emergencyContactPhone !== undefined) update.emergencyContactPhone = String(emergencyContactPhone);
+    if (language !== undefined) {
+      const allowedLanguages = ['en', 'hi', 'ta', 'te', 'kn'];
+      if (allowedLanguages.includes(String(language))) {
+        update.language = String(language);
+      }
+    }
 
-    const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('name email age gender phone emergencyContactName emergencyContactPhone concerns avatarUrl');
+    const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('name email age gender phone emergencyContactName emergencyContactPhone concerns avatarUrl language');
     if (!user) return res.status(404).json({ message: 'User not found' });
     return res.json({
       user: {
@@ -129,6 +136,7 @@ export const updateMe = async (req, res) => {
         emergencyContactPhone: user.emergencyContactPhone || null,
         concerns: user.concerns || [],
         avatarUrl: user.avatarUrl || null,
+        language: user.language || 'en',
       },
     });
   } catch (err) {

@@ -12,6 +12,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 
 const Colors = {
   primary: "#77C272",
@@ -104,6 +106,7 @@ const Chip = ({
 };
 
 export function ProfileScreenContent() {
+  const { t } = useTranslation();
   const { userData, setUserData } = useUser();
   const API_BASE = ((process.env.EXPO_PUBLIC_API_URL as string) || "").replace(
     /\/?$/,
@@ -119,6 +122,10 @@ export function ProfileScreenContent() {
       });
       const data = await res.json();
       if (res.ok && data?.user) {
+        // Set language preference
+        if (data.user.language) {
+          i18n.changeLanguage(data.user.language);
+        }
         setUserData({
           name: data.user.name || "",
           gender: data.user.gender || "other",
@@ -156,6 +163,17 @@ export function ProfileScreenContent() {
     "Sleep disorders",
   ];
 
+  const concernKeyMap: { [key: string]: string } = {
+    "Anger": "anger",
+    "Anxiety and Panic Attacks": "anxiety",
+    "Depression": "depression",
+    "Eating disorders": "eatingDisorder",
+    "Self-esteem": "selfEsteem",
+    "Self-harm": "selfHarm",
+    "Stress": "stress",
+    "Sleep disorders": "sleepDisorder",
+  };
+
   const terms = [
     "By using MindMate++, you agree to these Terms and our Privacy Policy.",
     "The app provides AI-powered study and wellbeing support. It does not replace professional academic, medical, or mental health advice.",
@@ -173,7 +191,7 @@ export function ProfileScreenContent() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={28} color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerText}>Profile</Text>
+        <Text style={styles.headerText}>{t("profile.title")}</Text>
         <TouchableOpacity onPress={() => router.push("./edit")}>
           <Ionicons name="create-outline" size={24} color={Colors.white} />
         </TouchableOpacity>
@@ -203,7 +221,11 @@ export function ProfileScreenContent() {
             size={16}
             color={Colors.secondary}
           />
-          <Text style={styles.infoText}>{userData.gender}</Text>
+          <Text style={styles.infoText}>
+            {userData.gender === "male" ? t("profile.male") :
+             userData.gender === "female" ? t("profile.female") :
+             t("profile.other")}
+          </Text>
         </View>
         <View style={styles.infoRowCenter}>
           <Ionicons
@@ -211,7 +233,7 @@ export function ProfileScreenContent() {
             size={16}
             color={Colors.secondary}
           />
-          <Text style={styles.infoText}>{userData.age} yrs. old</Text>
+          <Text style={styles.infoText}>{userData.age} {t("profile.age")}</Text>
         </View>
         <View style={styles.infoRowCenter}>
           <Ionicons name="call-outline" size={16} color={Colors.secondary} />
@@ -226,7 +248,7 @@ export function ProfileScreenContent() {
         <View style={styles.emailRow}>
           <Ionicons name="people-outline" size={16} color={Colors.secondary} />
           <Text style={styles.infoText}>
-            Emergency: {userData.emergencyContactName || "-"} (
+            {t("profile.emergency")}: {userData.emergencyContactName || "-"} (
             {userData.emergencyContactPhone || "N/A"})
           </Text>
         </View>
@@ -235,11 +257,19 @@ export function ProfileScreenContent() {
       <View style={styles.divider} />
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>My Concerns:</Text>
+        <Text style={styles.sectionTitle}>{t("profile.myConcerns")}</Text>
         <View style={styles.concernsContainer}>
-          {allConcerns.map((concern, index) => (
-            <Chip key={index} text={concern} userConcerns={userData.concerns} />
-          ))}
+          {allConcerns.map((concern, index) => {
+            const concernKey = concernKeyMap[concern];
+            const translatedText = concernKey ? t(`concerns.${concernKey}`) : concern;
+            const translatedUserConcerns = userData.concerns.map((c) => {
+              const key = concernKeyMap[c];
+              return key ? t(`concerns.${key}`) : c;
+            });
+            return (
+              <Chip key={index} text={translatedText} userConcerns={translatedUserConcerns} />
+            );
+          })}
         </View>
       </View>
 
@@ -250,7 +280,7 @@ export function ProfileScreenContent() {
       >
         <Text style={styles.legalTitle}>
           <Ionicons name="document-text-outline" size={18} color={Colors.secondary} />{" "}
-          Terms & Conditions
+          {t("profile.termsAndConditions")}
         </Text>
 
         {terms.map((term, index) => (
@@ -273,7 +303,7 @@ export function ProfileScreenContent() {
           router.replace("/(auth)/login");
         }}
       >
-        <Text style={styles.logoutText}>Logout</Text>
+        <Text style={styles.logoutText}>{t("profile.logout")}</Text>
       </TouchableOpacity>
 
       <View style={{ height: 60 }} />
