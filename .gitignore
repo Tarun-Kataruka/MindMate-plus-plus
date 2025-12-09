@@ -14,3 +14,28 @@ yarn-error.log
 *.env
 client/*.env.local
 server/*.env
+
+# Python Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Python AI Models
+server/ai_models/**/venv/
+server/ai_models/**/__pycache__/
+server/ai_models/**/*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
