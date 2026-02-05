@@ -8,16 +8,24 @@
     "scheme": "client",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/yoga_main.jpg",
         "backgroundColor": "#E6F4FE"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCrbpPUd7C11vjK9PW2GiMApBeNdXXd8bQ"
+        }
+      }
+    },
+    "ios": {
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyCrbpPUd7C11vjK9PW2GiMApBeNdXXd8bQ"
+      }
     },
     "web": {
       "output": "static",
