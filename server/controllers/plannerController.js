@@ -8,6 +8,227 @@ import StudyPlan from '../models/StudyPlan.js';
 import User from '../models/User.js';
 import { uploadsRoot, ensureDir } from '../utils/upload.js';
 
+const FIXED_BREAKS = [
+  { title: 'Lunch Break', startHour: 13, endHour: 14 },
+  { title: 'Snack Break', startHour: 17, endHour: 18 },
+  { title: 'Dinner Break', startHour: 20, endHour: 21 },
+];
+
+const MIN_BLOCK_MINUTES = 60;
+const MAX_BLOCK_MINUTES = 120;
+const MAX_STUDY_HOURS_PER_DAY = 8;
+const MAX_PLANNED_DAYS = 60;
+
+const parseTimeString = (value) => {
+  if (typeof value !== 'string') {
+    throw new Error('Time must be in HH:MM format');
+  }
+  const [hoursStr, minutesStr] = value.split(':');
+  const hours = Number(hoursStr);
+  const minutes = Number(minutesStr);
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    throw new Error(`Invalid time format: ${value}`);
+  }
+  return { hours, minutes };
+};
+
+const minutesBetweenDates = (start, end) => {
+  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+};
+
+const addMinutes = (date, minutes) => new Date(date.getTime() + minutes * 60000);
+
+const getDailyWindow = (anchorDate, dayIndex, startTime, endTime) => {
+  const dayStart = new Date(anchorDate);
+  dayStart.setDate(dayStart.getDate() + dayIndex);
+  dayStart.setHours(startTime.hours, startTime.minutes, 0, 0);
+
+  const dayEnd = new Date(anchorDate);
+  dayEnd.setDate(dayEnd.getDate() + dayIndex);
+  dayEnd.setHours(endTime.hours, endTime.minutes, 0, 0);
+
+  if (dayEnd <= dayStart) {
+    dayEnd.setDate(dayEnd.getDate() + 1);
+  }
+
+  return { dayStart, dayEnd };
+};
+
+const buildBreaksForDay = (anchorDate, dayIndex, windowStart, windowEnd) => {
+  const baseDay = new Date(anchorDate);
+  baseDay.setDate(baseDay.getDate() + dayIndex);
+  baseDay.setHours(0, 0, 0, 0);
+
+  const breaks = [];
+  for (const brk of FIXED_BREAKS) {
+    const start = new Date(baseDay);
+    start.setHours(brk.startHour, 0, 0, 0);
+    const end = new Date(baseDay);
+    end.setHours(brk.endHour, 0, 0, 0);
+    if (end <= start) {
+      end.setDate(end.getDate() + 1);
+    }
+    if (start < windowStart) {
+      start.setDate(start.getDate() + 1);
+      end.setDate(end.getDate() + 1);
+    }
+    if (start >= windowStart && end <= windowEnd) {
+      breaks.push({ title: brk.title, start, end });
+    }
+  }
+
+  return breaks.sort((a, b) => a.start - b.start);
+};
+
+const buildStudyWindows = (dayStart, dayEnd, breaks) => {
+  const windows = [];
+  let cursor = new Date(dayStart);
+  const sortedBreaks = [...breaks].sort((a, b) => a.start - b.start);
+
+  for (const brk of sortedBreaks) {
+    if (brk.start > cursor) {
+      windows.push({ start: new Date(cursor), end: new Date(brk.start) });
+    }
+    if (brk.end > cursor) {
+      cursor = new Date(brk.end);
+    }
+  }
+
+  if (cursor < dayEnd) {
+    windows.push({ start: new Date(cursor), end: new Date(dayEnd) });
+  }
+
+  return windows.filter((slot) => minutesBetweenDates(slot.start, slot.end) >= MIN_BLOCK_MINUTES);
+};
+
+const choosePreferredBlockMinutes = (availableMinutes, subjectCount) => {
+  if (availableMinutes < MIN_BLOCK_MINUTES || subjectCount <= 0) {
+    return 0;
+  }
+  const perSubject = availableMinutes / subjectCount;
+  if (perSubject >= 90 && availableMinutes >= MAX_BLOCK_MINUTES) {
+    return MAX_BLOCK_MINUTES;
+  }
+  return MIN_BLOCK_MINUTES;
+};
+
+const pickBlockLength = (preferred, slotRemaining, capRemaining) => {
+  if (preferred && slotRemaining >= preferred && capRemaining >= preferred) {
+    return preferred;
+  }
+  if (slotRemaining >= MIN_BLOCK_MINUTES && capRemaining >= MIN_BLOCK_MINUTES) {
+    return MIN_BLOCK_MINUTES;
+  }
+  return 0;
+};
+
+const buildStructuredPlan = ({
+  anchorDate,
+  subjectNames,
+  totalDays,
+  startTime,
+  endTime,
+  maxStudyMinutesPerDay,
+}) => {
+  const items = [];
+  const baseDate = new Date(anchorDate);
+  baseDate.setHours(0, 0, 0, 0);
+  let subjectCursor = 0;
+
+  for (let dayIndex = 0; dayIndex < totalDays; dayIndex++) {
+    const { dayStart, dayEnd } = getDailyWindow(baseDate, dayIndex, startTime, endTime);
+    const breaks = buildBreaksForDay(baseDate, dayIndex, dayStart, dayEnd);
+    const windows = buildStudyWindows(dayStart, dayEnd, breaks);
+    const availableMinutes = windows.reduce(
+      (sum, slot) => sum + minutesBetweenDates(slot.start, slot.end),
+      0,
+    );
+
+    if (!availableMinutes) {
+      items.push(
+        ...breaks.map((brk) => ({
+          subjectId: null,
+          title: brk.title,
+          start: brk.start,
+          end: brk.end,
+          completed: false,
+        })),
+      );
+      continue;
+    }
+
+    const preferredBlock = choosePreferredBlockMinutes(availableMinutes, subjectNames.length);
+    if (!preferredBlock) {
+      items.push(
+        ...breaks.map((brk) => ({
+          subjectId: null,
+          title: brk.title,
+          start: brk.start,
+          end: brk.end,
+          completed: false,
+        })),
+      );
+      continue;
+    }
+
+    const dayCap = Math.min(maxStudyMinutesPerDay, availableMinutes);
+    let minutesScheduled = 0;
+    const sessions = [];
+
+    for (const window of windows) {
+      let cursor = new Date(window.start);
+      while (minutesScheduled < dayCap) {
+        const slotRemaining = minutesBetweenDates(cursor, window.end);
+        const capRemaining = dayCap - minutesScheduled;
+        const blockLength = pickBlockLength(preferredBlock, slotRemaining, capRemaining);
+        if (!blockLength) {
+          break;
+        }
+
+        const subjectName = subjectNames[subjectCursor % subjectNames.length];
+        const start = new Date(cursor);
+        const end = addMinutes(start, blockLength);
+        sessions.push({
+          subjectId: null,
+          title: `Study ${subjectName}`,
+          start,
+          end,
+          completed: false,
+        });
+
+        minutesScheduled += blockLength;
+        cursor = new Date(end);
+        subjectCursor++;
+      }
+      if (minutesScheduled >= dayCap) {
+        break;
+      }
+    }
+
+    const combined = [
+      ...sessions,
+      ...breaks.map((brk) => ({
+        subjectId: null,
+        title: brk.title,
+        start: brk.start,
+        end: brk.end,
+        completed: false,
+      })),
+    ].sort((a, b) => a.start - b.start);
+
+    items.push(...combined);
+  }
+
+  return items;
+};
+
 // Subjects
 export const getSubjects = async (req, res) => {
   try {
@@ -277,112 +498,82 @@ export const createPlan = async (req, res) => {
       dailyEndTime = '17:00',
       numDays = 1,
       startDate,
+      maxHoursPerDay,
       datesheetPath,
-    } = req.body;
-    console.log('createPlan input:', req.body);
-    // Parse subjects - can be array or comma-separated string
+    } = req.body || {};
+
     let subjectNames = [];
     if (Array.isArray(subjectsInput)) {
-      subjectNames = subjectsInput.map(s => String(s).trim()).filter(s => s.length > 0);
+      subjectNames = subjectsInput.map((s) => String(s).trim()).filter((s) => s.length > 0);
     } else if (typeof subjectsInput === 'string') {
-      subjectNames = subjectsInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      subjectNames = subjectsInput
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
     }
 
     if (!subjectNames.length) {
       return res.status(400).json({ message: 'At least one subject is required' });
     }
 
-    // Parse start date
-    const startFrom = startDate ? new Date(startDate) : new Date();
-    if (isNaN(startFrom.getTime())) {
+    const planAnchor = startDate ? new Date(startDate) : new Date();
+    if (Number.isNaN(planAnchor.getTime())) {
       return res.status(400).json({ message: 'Invalid start date format' });
     }
 
-    // Parse times
-    const parseTime = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-        throw new Error(`Invalid time format: ${timeStr}`);
-      }
-      return { hours, minutes };
-    };
-
-    let startTime, endTime;
+    let startTime;
+    let endTime;
     try {
-      startTime = parseTime(dailyStartTime);
-      endTime = parseTime(dailyEndTime);
+      startTime = parseTimeString(dailyStartTime);
+      endTime = parseTimeString(dailyEndTime);
     } catch (err) {
       return res.status(400).json({ message: err.message });
     }
 
-    // Validate number of days
-    const totalDays = parseInt(numDays, 10);
-    if (isNaN(totalDays) || totalDays < 1) {
-      return res.status(400).json({ message: 'Number of days must be at least 1' });
+    const requestedDays = parseInt(numDays, 10);
+    const totalDays = Math.max(1, Math.min(MAX_PLANNED_DAYS, Number.isNaN(requestedDays) ? 1 : requestedDays));
+
+    const startMinutes = startTime.hours * 60 + startTime.minutes;
+    const endMinutes = endTime.hours * 60 + endTime.minutes;
+    let windowMinutes = endMinutes - startMinutes;
+    if (windowMinutes <= 0) {
+      windowMinutes += 24 * 60;
+    }
+    if (windowMinutes < MIN_BLOCK_MINUTES) {
+      return res.status(400).json({ message: 'Daily availability window is too short for any study session' });
     }
 
-    // Log datesheet usage
+    const parsedMaxHours = typeof maxHoursPerDay === 'number' ? maxHoursPerDay : parseFloat(maxHoursPerDay);
+    const fallbackHours = Math.min(MAX_STUDY_HOURS_PER_DAY, windowMinutes / 60);
+    let boundedHours = Number.isFinite(parsedMaxHours) ? parsedMaxHours : fallbackHours;
+    boundedHours = Math.min(MAX_STUDY_HOURS_PER_DAY, Math.max(1, boundedHours));
+    const maxStudyMinutesPerDay = Math.min(Math.round(boundedHours * 60), windowMinutes);
+
     if (datesheetPath) {
-      console.log(`Using datesheet: ${datesheetPath}`);
-    } else {
-      console.log('No exam datesheet supplied; continuing without exam constraints.');
+      console.log(`createPlan requested with datesheet: ${datesheetPath}`);
     }
 
-    // Calculate available hours per day
-    const startHour = startTime.hours + startTime.minutes / 60;
-    const endHour = endTime.hours + endTime.minutes / 60;
-    const availableHours = endHour - startHour;
-    
-    if (availableHours <= 0) {
-      return res.status(400).json({ message: 'End time must be after start time' });
+    const planItems = buildStructuredPlan({
+      anchorDate: planAnchor,
+      subjectNames,
+      totalDays,
+      startTime,
+      endTime,
+      maxStudyMinutesPerDay,
+    });
+
+    const studyItemCount = planItems.filter((item) => item.title.toLowerCase().startsWith('study')).length;
+    if (!studyItemCount) {
+      return res.status(400).json({
+        message: 'Unable to build a study plan with the provided availability. Try extending your study window or reducing subjects.',
+      });
     }
 
-    // Calculate study block duration (distribute subjects evenly across available time)
-    const blockHours = Math.max(1, Math.floor((availableHours / subjectNames.length) * 60) / 60); // At least 1 hour
-
-    const items = [];
-    let currentDate = new Date(startFrom);
-    currentDate.setHours(startTime.hours, startTime.minutes, 0, 0);
-
-    for (let d = 0; d < totalDays; d++) {
-      const dayStart = new Date(currentDate);
-      dayStart.setHours(startTime.hours, startTime.minutes, 0, 0);
-      
-      let dayCursor = new Date(dayStart);
-      
-      for (const subjectName of subjectNames) {
-        // Check if we've exceeded the daily end time
-        const currentHour = dayCursor.getHours() + dayCursor.getMinutes() / 60;
-        if (currentHour + blockHours > endHour) {
-          break; // Skip remaining subjects for this day
-        }
-
-        const start = new Date(dayCursor);
-        const end = new Date(dayCursor);
-        end.setHours(end.getHours() + Math.floor(blockHours));
-        end.setMinutes(end.getMinutes() + Math.round((blockHours % 1) * 60));
-
-        items.push({
-          subjectId: null, // No longer tied to AcademicSubject model
-          title: `Study ${subjectName}`,
-          start,
-          end,
-          completed: false,
-        });
-
-        dayCursor = new Date(end);
-      }
-
-      // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1);
-      currentDate.setHours(startTime.hours, startTime.minutes, 0, 0);
+    if (planItems.length > 1000) {
+      return res.status(400).json({ message: 'Generated plan is too large. Reduce the planning window or subject list.' });
     }
 
-    if (items.length === 0) {
-      return res.status(400).json({ message: 'No study items could be created with the given parameters' });
-    }
-
-    const plan = await StudyPlan.create({ userId: req.userId, items });
+    const plan = await StudyPlan.create({ userId: req.userId, items: planItems });
     res.status(201).json(plan);
   } catch (err) {
     console.error('createPlan error:', err);
