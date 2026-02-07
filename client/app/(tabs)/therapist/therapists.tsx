@@ -1,24 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Colors } from "@/constants/theme";
-
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  ScrollView, 
-  TouchableOpacity, 
-  Linking, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  TouchableOpacity,
+  Linking,
   ActivityIndicator,
   Alert,
   Platform,
-  Dimensions
-} from 'react-native';
-import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+} from "react-native";
 
-const { width } = Dimensions.get('window');
+import * as Location from "expo-location";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 interface Therapist {
   id: string;
@@ -35,6 +31,7 @@ interface Therapist {
   experience: string;
   price: string;
   image: string;
+  websiteUri?: string;
 }
 
 interface Appointment {
@@ -42,868 +39,406 @@ interface Appointment {
   therapistName: string;
   date: string;
   time: string;
-  status: 'upcoming' | 'completed' | 'cancelled';
+  status: "upcoming" | "completed" | "cancelled";
 }
 
 export default function TherapistsScreen() {
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [location, setLocation] = useState<Location.LocationObject | null>(
+    null
+  );
+
   const [loading, setLoading] = useState(true);
   const [therapists, setTherapists] = useState<Therapist[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState('All');
-  const [showAppointments, setShowAppointments] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState("All");
 
-  const filters = ['All', 'Available', 'Top Rated', 'Nearby'];
+  const filters = ["All", "Available", "Top Rated", "Nearby"];
+
+  const calculateDistance = useCallback(
+    (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) ** 2;
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    },
+    []
+  );
+
+  const handlePermissionDenied = useCallback(() => {
+    if (Platform.OS === "web") {
+      window.alert(
+        `Location Permission Blocked\n\n` +
+          `Please enable it manually:\n\n` +
+          `Chrome → 🔒 icon → Site Settings → Location → Allow\n\n` +
+          `Then refresh the page.`
+      );
+    } else {
+      Alert.alert(
+        "Location Required",
+        "Please enable location from app settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open Settings",
+            onPress: () => Linking.openSettings(),
+          },
+        ]
+      );
+    }
+  }, []);
+
+  /* ================= FETCH NEARBY (GOOGLE PLACES) ================= */
+
+  const fetchNearbyTherapists = useCallback(
+    async (latitude: number, longitude: number) => {
+      const baseUrl = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(
+        /\/$/,
+        ""
+      );
+      if (!baseUrl) {
+        Alert.alert(
+          "Error",
+          "API URL not configured. Set EXPO_PUBLIC_API_URL."
+        );
+        return;
+      }
+      try {
+        const url = `${baseUrl}/api/therapists/nearby?lat=${encodeURIComponent(
+          latitude
+        )}&lng=${encodeURIComponent(longitude)}`;
+        const res = await fetch(url);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          Alert.alert(
+            "Could not load therapists",
+            data?.message ||
+              "Server error. Ensure GOOGLE_MAPS_API_KEY is set and Places API (New) is enabled."
+          );
+          setTherapists([]);
+          return;
+        }
+
+        const list: Therapist[] = (data.therapists || []).map(
+          (t: Therapist) => ({
+            ...t,
+            distance: calculateDistance(
+              latitude,
+              longitude,
+              t.latitude,
+              t.longitude
+            ),
+          })
+        );
+
+        setTherapists(list);
+      } catch (error) {
+        console.error("Fetch therapists error:", error);
+        Alert.alert(
+          "Error",
+          "Failed to fetch therapists. Check your connection and try again."
+        );
+        setTherapists([]);
+      }
+    },
+    [calculateDistance]
+  );
+
+  /* ================= LOCATION ================= */
+
+  const getLocationPermission = useCallback(async () => {
+    setLoading(true);
+    try {
+      const permission = await Location.getForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        if (permission.canAskAgain) {
+          const req = await Location.requestForegroundPermissionsAsync();
+          if (req.status !== "granted") {
+            handlePermissionDenied();
+            return;
+          }
+        } else {
+          handlePermissionDenied();
+          return;
+        }
+      }
+      const current = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setLocation(current);
+      await fetchNearbyTherapists(
+        current.coords.latitude,
+        current.coords.longitude
+      );
+    } catch (err) {
+      console.error("Location error:", err);
+      handlePermissionDenied();
+    } finally {
+      setLoading(false);
+    }
+  }, [handlePermissionDenied, fetchNearbyTherapists]);
+
+  /* ================= AUTO LOAD ================= */
 
   useEffect(() => {
     getLocationPermission();
-  }, []);
+  }, [getLocationPermission]);
 
-  const getLocationPermission = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required to find nearby therapists');
-        setLoading(false);
-        return;
-      }
-
-      const currentLocation = await Location.getCurrentPositionAsync({});
-      setLocation(currentLocation);
-      fetchNearbyTherapists(currentLocation.coords.latitude, currentLocation.coords.longitude);
-    } catch (error) {
-      console.error('Error getting location:', error);
-      Alert.alert('Error', 'Failed to get your location');
-      setLoading(false);
-    }
-  };
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  const fetchNearbyTherapists = async (latitude: number, longitude: number) => {
-    try {
-      const mockTherapists: Therapist[] = [
-        {
-          id: '1',
-          name: 'Dr. Priya Sharma',
-          specialty: 'Anxiety & Depression',
-          rating: 4.8,
-          reviews: 127,
-          distance: calculateDistance(latitude, longitude, 12.9716, 77.5946),
-          address: 'Indiranagar, Bengaluru, Karnataka 560038',
-          phone: '+918012345678',
-          latitude: 12.9716,
-          longitude: 77.5946,
-          available: true,
-          experience: '12 years',
-          price: '₹1500/session',
-          image: 'https://i.pravatar.cc/150?img=1'
-        },
-        {
-          id: '2',
-          name: 'Dr. Rajesh Kumar',
-          specialty: 'Cognitive Behavioral Therapy',
-          rating: 4.9,
-          reviews: 203,
-          distance: calculateDistance(latitude, longitude, 12.9352, 77.6245),
-          address: 'Koramangala, Bengaluru, Karnataka 560034',
-          phone: '+918012345679',
-          latitude: 12.9352,
-          longitude: 77.6245,
-          available: true,
-          experience: '15 years',
-          price: '₹2000/session',
-          image: 'https://i.pravatar.cc/150?img=12'
-        },
-        {
-          id: '3',
-          name: 'Dr. Ananya Reddy',
-          specialty: 'Family & Relationship',
-          rating: 4.7,
-          reviews: 89,
-          distance: calculateDistance(latitude, longitude, 13.0358, 77.5970),
-          address: 'Yelahanka, Bengaluru, Karnataka 560064',
-          phone: '+918012345680',
-          latitude: 13.0358,
-          longitude: 77.5970,
-          available: false,
-          experience: '10 years',
-          price: '₹1200/session',
-          image: 'https://i.pravatar.cc/150?img=5'
-        },
-        {
-          id: '4',
-          name: 'Dr. Vikram Patel',
-          specialty: 'Trauma & PTSD',
-          rating: 4.9,
-          reviews: 156,
-          distance: calculateDistance(latitude, longitude, 12.9698, 77.7500),
-          address: 'Whitefield, Bengaluru, Karnataka 560066',
-          phone: '+918012345681',
-          latitude: 12.9698,
-          longitude: 77.7500,
-          available: true,
-          experience: '18 years',
-          price: '₹2500/session',
-          image: 'https://i.pravatar.cc/150?img=13'
-        },
-        {
-          id: '5',
-          name: 'Dr. Meera Iyer',
-          specialty: 'Stress Management',
-          rating: 4.6,
-          reviews: 74,
-          distance: calculateDistance(latitude, longitude, 12.9141, 77.6411),
-          address: 'HSR Layout, Bengaluru, Karnataka 560102',
-          phone: '+918012345682',
-          latitude: 12.9141,
-          longitude: 77.6411,
-          available: true,
-          experience: '8 years',
-          price: '₹1000/session',
-          image: 'https://i.pravatar.cc/150?img=9'
-        }
-      ];
-
-      setTherapists(mockTherapists);
-      
-      const mockAppointments: Appointment[] = [
-        {
-          id: '1',
-          therapistName: 'Dr. Priya Sharma',
-          date: '2024-12-15',
-          time: '10:00 AM',
-          status: 'upcoming'
-        }
-      ];
-      setAppointments(mockAppointments);
-      
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching therapists:', error);
-      Alert.alert('Error', 'Failed to fetch therapists');
-      setLoading(false);
-    }
-  };
-
-  const handleCallTherapist = (phone: string) => {
-    Linking.openURL(`tel:${phone}`);
-  };
-
-  const handleGetDirections = async (latitude: number, longitude: number, address: string) => {
-    if (!location) {
-      Alert.alert('Error', 'Unable to get your location');
-      return;
-    }
-
-    const userLat = location.coords.latitude;
-    const userLng = location.coords.longitude;
-    
-    const url = Platform.select({
-      ios: `maps:?saddr=${userLat},${userLng}&daddr=${latitude},${longitude}`,
-      android: `google.navigation:q=${latitude},${longitude}`
-    });
-    
-    const fallbackUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${latitude},${longitude}`;
-    
-    try {
-      if (url) {
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-          await Linking.openURL(url);
-        } else {
-          await Linking.openURL(fallbackUrl);
-        }
-      } else {
-        await Linking.openURL(fallbackUrl);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Unable to open maps');
-    }
-  };
-
-  const handleBookAppointment = (therapist: Therapist) => {
-    if (!therapist.available) {
-      Alert.alert('Unavailable', 'This therapist is currently unavailable');
-      return;
-    }
-
-    Alert.alert(
-      'Book Appointment',
-      `Book a session with ${therapist.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Book',
-          onPress: () => {
-            const newAppointment: Appointment = {
-              id: Date.now().toString(),
-              therapistName: therapist.name,
-              date: '2024-12-20',
-              time: '2:00 PM',
-              status: 'upcoming'
-            };
-            setAppointments([...appointments, newAppointment]);
-            Alert.alert('Success', 'Appointment booked successfully!');
-          }
-        }
-      ]
-    );
-  };
+  /* ================= FILTER ================= */
 
   const getFilteredTherapists = () => {
     switch (selectedFilter) {
-      case 'Available':
-        return therapists.filter(t => t.available);
-      case 'Top Rated':
+      case "Available":
+        return therapists.filter((t) => t.available);
+
+      case "Top Rated":
         return [...therapists].sort((a, b) => b.rating - a.rating);
-      case 'Nearby':
+
+      case "Nearby":
         return [...therapists].sort((a, b) => a.distance - b.distance);
+
       default:
         return therapists;
     }
   };
 
+  /* ================= ACTIONS ================= */
+
+  const handleCall = (phone: string) => {
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  const handleBook = (therapist: Therapist) => {
+    if (!therapist.available) return;
+
+    Alert.alert("Confirm", "Book appointment?", [
+      { text: "Cancel" },
+      {
+        text: "Book",
+        onPress: () => {
+          setAppointments((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              therapistName: therapist.name,
+              date: "2024-12-20",
+              time: "2:00 PM",
+              status: "upcoming",
+            },
+          ]);
+        },
+      },
+    ]);
+  };
+
+  /* ================= LOADING ================= */
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={['#667eea', '#764ba2']}
-          style={styles.loadingContainer}
-        >
-          <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Finding nearby therapists...</Text>
-        </LinearGradient>
+      <SafeAreaView style={styles.center}>
+        <ActivityIndicator size="large" />
+        <Text>Finding therapists...</Text>
       </SafeAreaView>
     );
   }
+
+  /* ================= NO LOCATION ================= */
 
   if (!location) {
     return (
-      <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={['#667eea', '#764ba2']}
-          style={styles.errorContainer}
-        >
-          <View style={styles.errorContent}>
-            <Ionicons name="location-outline" size={80} color="#fff" />
-            <Text style={styles.errorTitle}>Location Required</Text>
-            <Text style={styles.errorText}>
-              We need your location to find the best therapists near you
-            </Text>
-            <TouchableOpacity style={styles.retryButton} onPress={getLocationPermission}>
-              <Text style={styles.retryButtonText}>Enable Location</Text>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
+      <SafeAreaView style={styles.center}>
+        <Ionicons name="location-outline" size={80} />
+        <Text style={styles.title}>Location Required</Text>
+
+        <TouchableOpacity style={styles.retry} onPress={getLocationPermission}>
+          <Text style={styles.retryText}>Enable Location</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  const filteredTherapists = getFilteredTherapists();
+  /* ================= MAIN ================= */
+
+  const filtered = getFilteredTherapists();
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.headerTitle}>Find Your Therapist</Text>
-              <Text style={styles.headerSubtitle}>
-                {filteredTherapists.length} professionals ready to help
-              </Text>
-            </View>
-            {appointments.length > 0 && (
-              <TouchableOpacity 
-                style={styles.appointmentBadge}
-                onPress={() => setShowAppointments(!showAppointments)}
-              >
-                <Ionicons name="calendar" size={20} color="#667eea" />
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{appointments.length}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-        
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterContainer}
-          contentContainerStyle={styles.filterContent}
-        >
-          {filters.map((filter) => (
+      <ScrollView>
+        {/* HEADER */}
+        <LinearGradient colors={["#667eea", "#764ba2"]} style={styles.header}>
+          <Text style={styles.headerTitle}>Find Your Therapist</Text>
+
+          <Text style={styles.headerSub}>{filtered.length} professionals</Text>
+        </LinearGradient>
+
+        {/* FILTERS */}
+        <ScrollView horizontal style={styles.filters}>
+          {filters.map((f) => (
             <TouchableOpacity
-              key={filter}
-              style={[
-                styles.filterChip,
-                selectedFilter === filter && styles.filterChipActive
-              ]}
-              onPress={() => setSelectedFilter(filter)}
+              key={f}
+              onPress={() => setSelectedFilter(f)}
+              style={[styles.chip, f === selectedFilter && styles.chipActive]}
             >
-              <Text style={[
-                styles.filterText,
-                selectedFilter === filter && styles.filterTextActive
-              ]}>
-                {filter}
-              </Text>
+              <Text>{f}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </LinearGradient>
 
-      {showAppointments && appointments.length > 0 && (
-        <View style={styles.appointmentsSection}>
-          <View style={styles.appointmentsSectionHeader}>
-            <Text style={styles.appointmentsSectionTitle}>My Appointments</Text>
-            <TouchableOpacity onPress={() => setShowAppointments(false)}>
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
+        {/* LIST */}
+        {filtered.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>
+              No therapists found nearby. Try enabling location or increasing
+              search area.
+            </Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {appointments.map((appointment) => (
-              <View key={appointment.id} style={styles.appointmentCard}>
-                <View style={styles.appointmentHeader}>
-                  <Ionicons name="person-circle" size={40} color="#667eea" />
-                  <View style={styles.appointmentInfo}>
-                    <Text style={styles.appointmentTherapist}>{appointment.therapistName}</Text>
-                    <View style={styles.appointmentDateTime}>
-                      <Ionicons name="calendar-outline" size={14} color="#666" />
-                      <Text style={styles.appointmentDate}>{appointment.date}</Text>
-                    </View>
-                    <View style={styles.appointmentDateTime}>
-                      <Ionicons name="time-outline" size={14} color="#666" />
-                      <Text style={styles.appointmentTime}>{appointment.time}</Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={[
-                  styles.appointmentStatus,
-                  appointment.status === 'upcoming' && styles.statusUpcoming
-                ]}>
-                  <Text style={styles.appointmentStatusText}>
-                    {appointment.status.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+        ) : (
+          filtered.map((t) => (
+            <View key={t.id} style={styles.card}>
+              <Text style={styles.name}>{t.name}</Text>
+              {t.specialty ? <Text>{t.specialty}</Text> : null}
+              <Text>{t.distance.toFixed(1)} km away</Text>
+              {t.address ? (
+                <Text style={styles.address} numberOfLines={2}>
+                  {t.address}
+                </Text>
+              ) : null}
+              {t.rating > 0 && (
+                <Text style={styles.rating}>
+                  ⭐ {t.rating.toFixed(1)}
+                  {t.reviews > 0 ? ` (${t.reviews})` : ""}
+                </Text>
+              )}
 
-      <ScrollView 
-        style={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredTherapists.map((therapist) => (
-          <View key={therapist.id} style={styles.therapistCard}>
-            <LinearGradient
-              colors={['#ffffff', '#f8f9fa']}
-              style={styles.cardGradient}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.avatarContainer}>
-                  <View style={styles.avatar}>
-                    <Ionicons name="person" size={32} color="#667eea" />
-                  </View>
-                  {therapist.available && (
-                    <View style={styles.onlineBadge}>
-                      <View style={styles.onlineDot} />
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.therapistMainInfo}>
-                  <Text style={styles.therapistName}>{therapist.name}</Text>
-                  <Text style={styles.therapistSpecialty}>{therapist.specialty}</Text>
-                  
-                  <View style={styles.metaRow}>
-                    <View style={styles.ratingContainer}>
-                      <Ionicons name="star" size={14} color="#FFD700" />
-                      <Text style={styles.rating}>{therapist.rating}</Text>
-                      <Text style={styles.reviews}>({therapist.reviews})</Text>
-                    </View>
-                    <View style={styles.experienceContainer}>
-                      <Ionicons name="briefcase-outline" size={14} color="#667eea" />
-                      <Text style={styles.experience}>{therapist.experience}</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.detailsSection}>
-                <View style={styles.detailRow}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons name="location" size={16} color="#667eea" />
-                  </View>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Location</Text>
-                    <Text style={styles.detailText}>{therapist.address}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons name="navigate" size={16} color="#667eea" />
-                  </View>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Distance</Text>
-                    <Text style={styles.detailText}>{therapist.distance.toFixed(1)} km away</Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons name="cash-outline" size={16} color="#667eea" />
-                  </View>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Session Fee</Text>
-                    <Text style={styles.detailText}>{therapist.price}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.actionSection}>
-                <TouchableOpacity 
-                  style={styles.secondaryButton}
-                  onPress={() => handleCallTherapist(therapist.phone)}
-                >
-                  <Ionicons name="call" size={18} color="#667eea" />
-                  <Text style={styles.secondaryButtonText}>Call</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.secondaryButton}
-                  onPress={() => handleGetDirections(therapist.latitude, therapist.longitude, therapist.address)}
-                >
-                  <Ionicons name="navigate" size={18} color="#667eea" />
-                  <Text style={styles.secondaryButtonText}>Directions</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[
-                    styles.primaryButton,
-                    !therapist.available && styles.disabledButton
-                  ]}
-                  disabled={!therapist.available}
-                  onPress={() => handleBookAppointment(therapist)}
-                >
-                  <LinearGradient
-                    colors={therapist.available ? ['#667eea', '#764ba2'] : ['#ccc', '#999']}
-                    style={styles.primaryButtonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+              <View style={styles.row}>
+                {t.phone ? (
+                  <TouchableOpacity onPress={() => handleCall(t.phone)}>
+                    <Text>📞 Call</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {t.websiteUri ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const url = t.websiteUri ?? "";
+                      if (url) Linking.openURL(url);
+                    }}
                   >
-                    <Ionicons name="calendar" size={18} color="#fff" />
-                    <Text style={styles.primaryButtonText}>
-                      {therapist.available ? 'Book Now' : 'Unavailable'}
-                    </Text>
-                  </LinearGradient>
+                    <Text>🌐 Website</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity onPress={() => handleBook(t)}>
+                  <Text>📅 Book</Text>
                 </TouchableOpacity>
               </View>
-            </LinearGradient>
-          </View>
-        ))}
-
-        <View style={styles.bottomPadding} />
+            </View>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
+    backgroundColor: "#f2f2f2",
   },
-  loadingContainer: {
+
+  center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContent: {
-    alignItems: 'center',
-    padding: 32,
-  },
-  errorTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 24,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
-    marginTop: 12,
-    opacity: 0.9,
-    lineHeight: 24,
-  },
-  retryButton: {
-    marginTop: 32,
-    backgroundColor: '#fff',
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  retryButtonText: {
-    color: '#667eea',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  header: {
-    paddingTop: 16,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  headerContent: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#fff',
-    marginTop: 8,
-    opacity: 0.9,
-  },
-  appointmentBadge: {
-    backgroundColor: '#fff',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  badge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#FF4444',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  filterContainer: {
-    paddingHorizontal: 20,
-  },
-  filterContent: {
-    gap: 12,
-  },
-  filterChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  filterChipActive: {
-    backgroundColor: '#fff',
-  },
-  filterText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  filterTextActive: {
-    color: '#667eea',
-  },
-  appointmentsSection: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  appointmentsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  appointmentsSectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  appointmentCard: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
-    width: 280,
-    borderWidth: 2,
-    borderColor: '#667eea',
-  },
-  appointmentHeader: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  appointmentInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  appointmentTherapist: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 6,
-  },
-  appointmentDateTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  appointmentDate: {
-    fontSize: 13,
-    color: '#666',
-  },
-  appointmentTime: {
-    fontSize: 13,
-    color: '#666',
-  },
-  appointmentStatus: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusUpcoming: {
-    backgroundColor: '#E3F2FD',
-  },
-  appointmentStatusText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#667eea',
-  },
-  listContainer: {
-    flex: 1,
-    paddingTop: 20,
-  },
-  therapistCard: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  cardGradient: {
-    padding: 20,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#f0f2ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#667eea',
-  },
-  onlineBadge: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  onlineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#4CAF50',
-  },
-  therapistMainInfo: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  therapistName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  therapistSpecialty: {
-    fontSize: 14,
-    color: '#667eea',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  rating: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  reviews: {
-    fontSize: 12,
-    color: '#666',
-  },
-  experienceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  experience: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
+
+  title: {
+    fontSize: 22,
     marginVertical: 16,
   },
-  detailsSection: {
-    gap: 12,
-    marginBottom: 16,
+
+  retry: {
+    backgroundColor: "#667eea",
+    padding: 14,
+    borderRadius: 10,
   },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  retryText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f0f2ff',
-    justifyContent: 'center',
-    alignItems: 'center',
+
+  header: {
+    padding: 24,
   },
-  detailTextContainer: {
-    marginLeft: 12,
-    flex: 1,
+
+  headerTitle: {
+    fontSize: 28,
+    color: "#fff",
+    fontWeight: "bold",
   },
-  detailLabel: {
-    fontSize: 11,
-    color: '#999',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+
+  headerSub: {
+    color: "#fff",
   },
-  detailText: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 2,
-    fontWeight: '500',
+
+  filters: {
+    padding: 12,
   },
-  actionSection: {
-    flexDirection: 'row',
-    gap: 10,
+
+  chip: {
+    padding: 10,
+    backgroundColor: "#ddd",
+    borderRadius: 20,
+    marginRight: 8,
   },
-  secondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
+
+  chipActive: {
+    backgroundColor: "#667eea",
+  },
+
+  card: {
+    backgroundColor: "#fff",
+    margin: 12,
+    padding: 16,
     borderRadius: 12,
-    backgroundColor: '#f0f2ff',
-    gap: 6,
   },
-  secondaryButtonText: {
-    color: '#667eea',
-    fontSize: 14,
-    fontWeight: 'bold',
+
+  name: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
-  primaryButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
+
+  address: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 4,
   },
-  disabledButton: {
-    opacity: 0.6,
+
+  rating: {
+    fontSize: 12,
+    marginTop: 4,
   },
-  primaryButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 6,
+
+  empty: {
+    padding: 24,
+    alignItems: "center",
   },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+
+  emptyText: {
+    color: "#666",
+    textAlign: "center",
   },
-  bottomPadding: {
-    height: 20,
+
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
   },
 });

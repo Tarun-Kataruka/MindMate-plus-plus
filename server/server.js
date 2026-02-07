@@ -35,6 +35,7 @@ import blogRoutes from './routes/blogRoutes.js';
 import googleRoutes from './routes/googleRoutes.js';
 import calendarRoutes from './routes/calendarRoutes.js';
 import plannerRoutes from './routes/plannerRoutes.js';
+import therapistRoutes from './routes/therapistRoutes.js';
 app.use('/api/auth', authRoutes);
 app.use('/api/quotes', quoteRoutes);
 app.use('/api/chatbot', chatbotRoutes);
@@ -44,6 +45,7 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/google', googleRoutes);
 app.use('/api/v1/calendar', calendarRoutes);
 app.use('/api/planner', plannerRoutes);
+app.use('/api/therapists', therapistRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
