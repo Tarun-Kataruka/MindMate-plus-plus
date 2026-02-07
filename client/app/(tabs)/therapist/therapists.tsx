@@ -301,10 +301,14 @@ export default function TherapistsScreen() {
         ) : (
           filtered.map((t) => (
             <View key={t.id} style={styles.card}>
-              <Text style={styles.name}>{t.name}</Text>
-              {t.specialty ? <Text>{t.specialty}</Text> : null}
+              <Text style={styles.name}>
+                {typeof t.name === "string" ? t.name : "Therapist"}
+              </Text>
+              {t.specialty && typeof t.specialty === "string" ? (
+                <Text>{t.specialty}</Text>
+              ) : null}
               <Text>{t.distance.toFixed(1)} km away</Text>
-              {t.address ? (
+              {t.address && typeof t.address === "string" ? (
                 <Text style={styles.address} numberOfLines={2}>
                   {t.address}
                 </Text>

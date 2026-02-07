@@ -78,13 +78,15 @@ export async function getNearbyTherapists(req, res) {
 
     const data = await response.json();
     const places = data.places || [];
+    const toText = (v) =>
+      v == null ? '' : typeof v === 'string' ? v : (v.text ?? '');
 
     const therapists = places.map((p) => {
-      const name = p.displayName?.text || 'Therapist';
+      const name = toText(p.displayName) || 'Therapist';
       const address = p.formattedAddress || '';
       const latitude = p.location?.latitude ?? 0;
       const longitude = p.location?.longitude ?? 0;
-      const specialty = p.primaryTypeDisplayName || 'Mental health professional';
+      const specialty = toText(p.primaryTypeDisplayName) || 'Mental health professional';
 
       return {
         id: (p.id || name).replace(/^places\//, '') || `place-${latitude}-${longitude}`,
