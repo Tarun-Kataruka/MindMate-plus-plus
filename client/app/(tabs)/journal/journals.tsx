@@ -11,6 +11,8 @@ import { Colors } from "@/constants/theme";
 import JournalTab from "../../../components/journal/JournalTab";
 import BlogTab from "../../../components/journal/BlogTab";
 import { useTranslation } from "react-i18next";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 
 type TabKey = "BLOGS" | "JOURNALS";
 
@@ -56,7 +58,7 @@ export default function JournalsMainScreen() {
     };
 
     fetchData();
-  }, [activeTab, baseUrl,token]);
+  }, [activeTab, baseUrl, token]);
 
   const handleJournalCreated = (created: any) =>
     setJournals((prev) => [created, ...prev]);
@@ -71,36 +73,63 @@ export default function JournalsMainScreen() {
       )
     );
 
+  const tabIcons: Record<TabKey, keyof typeof Ionicons.glyphMap> = {
+    BLOGS: "newspaper-outline",
+    JOURNALS: "book-outline",
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.tabContainer}>
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={styles.tabButton}
-              onPress={() => setActiveTab(tab)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.tabContentWrap}>
+      <LinearGradient
+        colors={["#6BCB77", "#4AAE63"]}
+        style={styles.headerGradient}
+      >
+        <Text style={styles.headerTitle}>
+          {activeTab === "JOURNALS" ? "My Journal" : "Community Blogs"}
+        </Text>
+        <Text style={styles.headerSub}>
+          {activeTab === "JOURNALS"
+            ? "Express your thoughts freely"
+            : "Read & share wellness stories"}
+        </Text>
+        <View style={styles.tabRow}>
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabPill, isActive && styles.tabPillActive]}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={tabIcons[tab]}
+                  size={16}
+                  color={isActive ? "#388e3c" : "rgba(255,255,255,0.85)"}
+                />
                 <Text
-                  style={[styles.tabText, isActive && styles.activeTabText]}
+                  style={[
+                    styles.tabText,
+                    isActive && styles.tabTextActive,
+                  ]}
                 >
                   {tab === "JOURNALS" ? t("journal.journals") : t("journal.blogs")}
                 </Text>
-                {isActive && <View style={styles.activeUnderline} />}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </LinearGradient>
 
       {loading ? (
-        <ActivityIndicator color="#2196F3" style={{ marginTop: 20 }} />
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color="#77C272" size="large" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       ) : error ? (
-        <View style={{ padding: 16 }}>
-          <Text style={{ color: "#d32f2f" }}>{error}</Text>
+        <View style={styles.errorWrap}>
+          <Ionicons name="alert-circle-outline" size={40} color="#e53935" />
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : activeTab === "JOURNALS" ? (
         <JournalTab
@@ -123,33 +152,80 @@ export default function JournalsMainScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
+    backgroundColor: "#F7FDF7",
   },
-  tabContainer: {
+  headerGradient: {
+    paddingTop: 16,
+    paddingBottom: 18,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#fff",
+    textAlign: "center",
+  },
+  headerSub: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    textAlign: "center",
+    marginTop: 2,
+    marginBottom: 14,
+  },
+  tabRow: {
     flexDirection: "row",
-    justifyContent: "center",
-    backgroundColor: "#77C272",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 14,
+    padding: 4,
   },
-  tabButton: {
+  tabPill: {
     flex: 1,
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 11,
+    gap: 6,
   },
-  tabContentWrap: {
-    alignItems: "center",
+  tabPillActive: {
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   tabText: {
-    fontSize: 16,
-    color: "#fff",
-    fontWeight: "500",
+    fontSize: 14,
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "600",
   },
-  activeTabText: {
+  tabTextActive: {
+    color: "#388e3c",
     fontWeight: "700",
   },
-  activeUnderline: {
-    height: 2,
-    width: "100%",
-    backgroundColor: "#2196F3",
-    marginTop: 6,
+  loadingWrap: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    color: "#888",
+    fontSize: 14,
+  },
+  errorWrap: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    padding: 20,
+  },
+  errorText: {
+    color: "#d32f2f",
+    fontSize: 15,
+    textAlign: "center",
   },
 });

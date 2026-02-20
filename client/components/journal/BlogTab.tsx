@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 import BlogCard from "./BlogCard";
 
 interface BlogItem {
@@ -124,15 +125,24 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
         )}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
-        overScrollMode="never"
-        bounces={false}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <View style={styles.emptyCircle}>
+              <Ionicons name="newspaper-outline" size={40} color="#c8e6c9" />
+            </View>
+            <Text style={styles.emptyTitle}>No blogs yet</Text>
+            <Text style={styles.emptyText}>
+              Be the first to share a story!
+            </Text>
+          </View>
+        }
       />
       <TouchableOpacity
         style={styles.fab}
         onPress={() => setShowCreate(true)}
         activeOpacity={0.85}
       >
-        <Text style={styles.fabText}>＋</Text>
+        <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
 
       <Modal
@@ -146,23 +156,28 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
           onPress={() => setShowCreate(false)}
         >
           <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 12 }}>
-              New Blog
-            </Text>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeaderRow}>
+              <Ionicons name="create-outline" size={22} color="#388e3c" />
+              <Text style={styles.modalTitle}>New Blog Post</Text>
+            </View>
             <TextInput
-              placeholder="Author"
+              placeholder="Your name"
+              placeholderTextColor="#aaa"
               style={styles.input}
               value={form.author}
               onChangeText={(v) => setForm((f) => ({ ...f, author: v }))}
             />
             <TextInput
-              placeholder="Title"
+              placeholder="Blog title"
+              placeholderTextColor="#aaa"
               style={styles.input}
               value={form.title}
               onChangeText={(v) => setForm((f) => ({ ...f, title: v }))}
             />
             <TextInput
-              placeholder="Image URL (https://...)"
+              placeholder="Cover image URL (https://...)"
+              placeholderTextColor="#aaa"
               style={styles.input}
               value={form.image}
               onChangeText={(v) => setForm((f) => ({ ...f, image: v }))}
@@ -171,21 +186,18 @@ const BlogTab: React.FC<BlogTabProps> = ({ data, onCreated, onLiked }) => {
             />
             {form.image ? (
               <Image source={{ uri: form.image }} style={styles.imagePreview} />
-            ) : (
-              <Image
-                source={require("../../assets/breathing.jpeg")}
-                style={styles.imagePreview}
-              />
-            )}
+            ) : null}
             <TextInput
-              placeholder="Excerpt"
-              style={[styles.input, { height: 90 }]}
+              placeholder="Write a short excerpt..."
+              placeholderTextColor="#aaa"
+              style={[styles.input, styles.textArea]}
               multiline
               value={form.excerpt}
               onChangeText={(v) => setForm((f) => ({ ...f, excerpt: v }))}
             />
-            <TouchableOpacity onPress={onSubmitCreate} style={styles.submitBtn}>
-              <Text style={styles.submitText}>Save</Text>
+            <TouchableOpacity onPress={onSubmitCreate} style={styles.submitBtn} activeOpacity={0.85}>
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Text style={styles.submitText}>Publish</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -198,57 +210,36 @@ export default BlogTab;
 
 const styles = StyleSheet.create({
   listContainer: {
-    padding: 15,
-    paddingBottom: 30,
+    padding: 16,
+    paddingBottom: 100,
   },
-  blogCardRow: {
-    flexDirection: "row",
+  emptyWrap: {
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 17,
-    marginBottom: 16,
-    padding: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingTop: 60,
+    gap: 8,
   },
-  cardImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 15,
-    marginRight: 16,
-    backgroundColor: "#ececec",
-  },
-  cardTextContainer: {
-    flex: 1,
+  emptyCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f1f8e9",
     justifyContent: "center",
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 2,
-    color: "#232323",
-  },
-  cardAuthor: {
-    fontSize: 13,
-    color: "#B0B0B0",
-    marginBottom: 5,
-  },
-  cardLikesRow: {
-    flexDirection: "row",
     alignItems: "center",
+    marginBottom: 8,
   },
-  cardLikesText: {
-    fontSize: 13,
-    color: "#868686",
-    marginLeft: 7,
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#555",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#999",
   },
   fab: {
     position: "absolute",
-    right: 16,
-    bottom: 16,
+    right: 20,
+    bottom: 24,
     backgroundColor: "#77C272",
     width: 56,
     height: 56,
@@ -256,62 +247,74 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     elevation: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  fabText: {
-    color: '#fff',
-    fontSize: 28,
-    lineHeight: 30,
-    fontWeight: "700",
+    shadowColor: "#388e3c",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "flex-end",
   },
   modalCard: {
     backgroundColor: "#fff",
-    padding: 16,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    padding: 22,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#ddd",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#333",
   },
   input: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    fontSize: 15,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    borderColor: "#eee",
+  },
+  textArea: {
+    height: 90,
+    textAlignVertical: "top",
+  },
+  imagePreview: {
+    width: "100%",
+    height: 140,
+    marginBottom: 12,
+    borderRadius: 12,
+    backgroundColor: "#e8f5e9",
   },
   submitBtn: {
     backgroundColor: "#388e3c",
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: "center",
-    marginTop: 6,
+    marginTop: 4,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
   submitText: {
     color: "#fff",
     fontWeight: "700",
-  },
-  imagePickerBtn: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    backgroundColor: "#2e7d32",
-    marginBottom: 10,
-  },
-  imagePickerText: {
-    color: "#fff",
-    fontWeight: "700",
     fontSize: 16,
-  },
-  imagePreview: {
-    width: "100%",
-    height: 150,
-    marginBottom: 10,
-    borderRadius: 10,
   },
 });

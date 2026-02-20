@@ -15,6 +15,7 @@ import {
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import TherapistMap from "../../../components/TherapistMap";
 
 interface Therapist {
   id: string;
@@ -28,32 +29,28 @@ interface Therapist {
   latitude: number;
   longitude: number;
   available: boolean;
+  isOpen: boolean | null;
   experience: string;
   price: string;
   image: string;
   websiteUri?: string;
 }
 
-interface Appointment {
-  id: string;
-  therapistName: string;
-  date: string;
-  time: string;
-  status: "upcoming" | "completed" | "cancelled";
-}
+const FILTERS = ["All", "Nearby", "Open Now"] as const;
+
+const FILTER_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  All: "grid-outline",
+  Nearby: "location-outline",
+  "Open Now": "time-outline",
+};
 
 export default function TherapistsScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(
     null
   );
-
   const [loading, setLoading] = useState(true);
   const [therapists, setTherapists] = useState<Therapist[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("All");
-
-  const filters = ["All", "Available", "Top Rated", "Nearby"];
 
   const calculateDistance = useCallback(
     (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -75,7 +72,7 @@ export default function TherapistsScreen() {
       window.alert(
         `Location Permission Blocked\n\n` +
           `Please enable it manually:\n\n` +
-          `Chrome → 🔒 icon → Site Settings → Location → Allow\n\n` +
+          `Chrome → Lock icon → Site Settings → Location → Allow\n\n` +
           `Then refresh the page.`
       );
     } else {
@@ -194,15 +191,10 @@ export default function TherapistsScreen() {
 
   const getFilteredTherapists = () => {
     switch (selectedFilter) {
-      case "Available":
-        return therapists.filter((t) => t.available);
-
-      case "Top Rated":
-        return [...therapists].sort((a, b) => b.rating - a.rating);
-
       case "Nearby":
         return [...therapists].sort((a, b) => a.distance - b.distance);
-
+      case "Open Now":
+        return therapists.filter((t) => t.isOpen === true);
       default:
         return therapists;
     }
@@ -210,138 +202,329 @@ export default function TherapistsScreen() {
 
   /* ================= ACTIONS ================= */
 
+  const openInGoogleMaps = (t: Therapist) => {
+    const encodedName = encodeURIComponent(
+      typeof t.name === "string" ? t.name : "Therapist"
+    );
+    Linking.openURL(
+      `https://www.google.com/maps/search/?api=1&query=${t.latitude},${t.longitude}&query_place_id=${t.id}`
+    );
+  };
+
   const handleCall = (phone: string) => {
     Linking.openURL(`tel:${phone}`);
   };
 
-  const handleBook = (therapist: Therapist) => {
-    if (!therapist.available) return;
-
-    Alert.alert("Confirm", "Book appointment?", [
-      { text: "Cancel" },
-      {
-        text: "Book",
-        onPress: () => {
-          setAppointments((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              therapistName: therapist.name,
-              date: "2024-12-20",
-              time: "2:00 PM",
-              status: "upcoming",
-            },
-          ]);
-        },
-      },
-    ]);
-  };
-
-  /* ================= LOADING ================= */
+  /* ================= LOADING STATE ================= */
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text>Finding therapists...</Text>
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={["#6BCB77", "#4AAE63"]}
+          style={styles.header}
+        >
+          <Ionicons
+            name="heart-circle-outline"
+            size={36}
+            color="rgba(255,255,255,0.3)"
+          />
+          <Text style={styles.headerTitle}>Find Your Therapist</Text>
+          <Text style={styles.headerSubtitle}>
+            Professional support near you
+          </Text>
+        </LinearGradient>
+        <View style={styles.centerBody}>
+          <ActivityIndicator size="large" color="#77C272" />
+          <Text style={styles.loadingText}>
+            Finding therapists near you...
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
 
-  /* ================= NO LOCATION ================= */
+  /* ================= NO LOCATION STATE ================= */
 
   if (!location) {
     return (
-      <SafeAreaView style={styles.center}>
-        <Ionicons name="location-outline" size={80} />
-        <Text style={styles.title}>Location Required</Text>
-
-        <TouchableOpacity style={styles.retry} onPress={getLocationPermission}>
-          <Text style={styles.retryText}>Enable Location</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={["#6BCB77", "#4AAE63"]}
+          style={styles.header}
+        >
+          <Ionicons
+            name="heart-circle-outline"
+            size={36}
+            color="rgba(255,255,255,0.3)"
+          />
+          <Text style={styles.headerTitle}>Find Your Therapist</Text>
+          <Text style={styles.headerSubtitle}>
+            Professional support near you
+          </Text>
+        </LinearGradient>
+        <View style={styles.centerBody}>
+          <View style={styles.emptyIconCircle}>
+            <Ionicons name="location-outline" size={48} color="#77C272" />
+          </View>
+          <Text style={styles.emptyTitle}>Location Required</Text>
+          <Text style={styles.emptySubtext}>
+            We need your location to find therapists near you
+          </Text>
+          <TouchableOpacity
+            style={styles.greenBtn}
+            onPress={getLocationPermission}
+          >
+            <Ionicons name="location" size={18} color="#fff" />
+            <Text style={styles.greenBtnText}>Enable Location</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
-  /* ================= MAIN ================= */
+  /* ================= MAIN RENDER ================= */
 
   const filtered = getFilteredTherapists();
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        {/* HEADER */}
-        <LinearGradient colors={["#667eea", "#764ba2"]} style={styles.header}>
-          <Text style={styles.headerTitle}>Find Your Therapist</Text>
+  const renderMap = () => (
+    <View style={styles.mapContainer}>
+      <TherapistMap
+        latitude={location.coords.latitude}
+        longitude={location.coords.longitude}
+        therapists={therapists}
+      />
+    </View>
+  );
 
-          <Text style={styles.headerSub}>{filtered.length} professionals</Text>
-        </LinearGradient>
-
-        {/* FILTERS */}
-        <ScrollView horizontal style={styles.filters}>
-          {filters.map((f) => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => setSelectedFilter(f)}
-              style={[styles.chip, f === selectedFilter && styles.chipActive]}
-            >
-              <Text>{f}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* LIST */}
-        {filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>
-              No therapists found nearby. Try enabling location or increasing
-              search area.
+  const renderCard = (t: Therapist) => (
+    <TouchableOpacity
+      key={t.id}
+      style={styles.card}
+      onPress={() => openInGoogleMaps(t)}
+      activeOpacity={0.7}
+    >
+      {/* Top section: avatar + info */}
+      <View style={styles.cardTop}>
+        <View style={styles.avatarCircle}>
+          <Ionicons name="person" size={22} color="#fff" />
+        </View>
+        <View style={styles.cardInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.cardName} numberOfLines={1}>
+              {typeof t.name === "string" ? t.name : "Therapist"}
             </Text>
-          </View>
-        ) : (
-          filtered.map((t) => (
-            <View key={t.id} style={styles.card}>
-              <Text style={styles.name}>
-                {typeof t.name === "string" ? t.name : "Therapist"}
-              </Text>
-              {t.specialty && typeof t.specialty === "string" ? (
-                <Text>{t.specialty}</Text>
-              ) : null}
-              <Text>{t.distance.toFixed(1)} km away</Text>
-              {t.address && typeof t.address === "string" ? (
-                <Text style={styles.address} numberOfLines={2}>
-                  {t.address}
+            {t.isOpen !== null && (
+              <View
+                style={[
+                  styles.statusBadge,
+                  t.isOpen ? styles.openBadge : styles.closedBadge,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: t.isOpen ? "#4caf50" : "#e53935" },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.statusText,
+                    { color: t.isOpen ? "#388e3c" : "#c62828" },
+                  ]}
+                >
+                  {t.isOpen ? "Open" : "Closed"}
                 </Text>
-              ) : null}
-              {t.rating > 0 && (
-                <Text style={styles.rating}>
-                  ⭐ {t.rating.toFixed(1)}
+              </View>
+            )}
+          </View>
+          {t.specialty && typeof t.specialty === "string" ? (
+            <Text style={styles.cardSpecialty} numberOfLines={1}>
+              {t.specialty}
+            </Text>
+          ) : null}
+          <View style={styles.cardMeta}>
+            {t.rating > 0 && (
+              <View style={styles.metaItem}>
+                <Ionicons name="star" size={14} color="#FFC107" />
+                <Text style={styles.metaText}>
+                  {t.rating.toFixed(1)}
                   {t.reviews > 0 ? ` (${t.reviews})` : ""}
                 </Text>
-              )}
-
-              <View style={styles.row}>
-                {t.phone ? (
-                  <TouchableOpacity onPress={() => handleCall(t.phone)}>
-                    <Text>📞 Call</Text>
-                  </TouchableOpacity>
-                ) : null}
-                {t.websiteUri ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const url = t.websiteUri ?? "";
-                      if (url) Linking.openURL(url);
-                    }}
-                  >
-                    <Text>🌐 Website</Text>
-                  </TouchableOpacity>
-                ) : null}
-                <TouchableOpacity onPress={() => handleBook(t)}>
-                  <Text>📅 Book</Text>
-                </TouchableOpacity>
               </View>
+            )}
+            <View style={styles.metaItem}>
+              <Ionicons name="navigate-outline" size={14} color="#77C272" />
+              <Text style={styles.metaText}>
+                {t.distance.toFixed(1)} km
+              </Text>
             </View>
-          ))
+          </View>
+        </View>
+      </View>
+
+      {/* Address */}
+      {t.address && typeof t.address === "string" ? (
+        <View style={styles.addressRow}>
+          <Ionicons name="location-outline" size={14} color="#999" />
+          <Text style={styles.addressText} numberOfLines={2}>
+            {t.address}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Divider */}
+      <View style={styles.cardDivider} />
+
+      {/* Actions */}
+      <View style={styles.cardActions}>
+        {t.phone ? (
+          <TouchableOpacity
+            style={styles.actionOutline}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleCall(t.phone);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="call-outline" size={15} color="#388e3c" />
+            <Text style={styles.actionOutlineText}>Call</Text>
+          </TouchableOpacity>
+        ) : null}
+        {t.websiteUri ? (
+          <TouchableOpacity
+            style={styles.actionOutline}
+            onPress={(e) => {
+              e.stopPropagation();
+              const url = t.websiteUri ?? "";
+              if (url) Linking.openURL(url);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="globe-outline" size={15} color="#388e3c" />
+            <Text style={styles.actionOutlineText}>Website</Text>
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity
+          style={styles.actionSolid}
+          onPress={(e) => {
+            e.stopPropagation();
+            openInGoogleMaps(t);
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="navigate" size={15} color="#fff" />
+          <Text style={styles.actionSolidText}>Directions</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header */}
+        <LinearGradient
+          colors={["#6BCB77", "#4AAE63"]}
+          style={styles.header}
+        >
+          <Ionicons
+            name="heart-circle-outline"
+            size={36}
+            color="rgba(255,255,255,0.3)"
+          />
+          <Text style={styles.headerTitle}>Find Your Therapist</Text>
+          <Text style={styles.headerSubtitle}>
+            Professional support near you
+          </Text>
+        </LinearGradient>
+
+        {/* Map */}
+        {renderMap()}
+
+        {/* Filters */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterContent}
+        >
+          {FILTERS.map((f) => {
+            const active = f === selectedFilter;
+            return (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setSelectedFilter(f)}
+                style={[styles.chip, active && styles.chipActive]}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={FILTER_ICONS[f]}
+                  size={15}
+                  color={active ? "#fff" : "#388e3c"}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={[
+                    styles.chipText,
+                    active && styles.chipTextActive,
+                  ]}
+                >
+                  {f}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Results count */}
+        <View style={styles.resultsBar}>
+          <Text style={styles.resultsText}>
+            {filtered.length}{" "}
+            {filtered.length === 1 ? "therapist" : "therapists"} found
+          </Text>
+        </View>
+
+        {/* Therapist list or empty state */}
+        {filtered.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="search-outline" size={44} color="#77C272" />
+            </View>
+            <Text style={styles.emptyTitle}>No Therapists Found</Text>
+            <Text style={styles.emptySubtext}>
+              {selectedFilter === "Open Now"
+                ? "No therapists are open right now. Try switching to the All filter."
+                : "We couldn't find therapists nearby. Try enabling location or check your internet connection."}
+            </Text>
+            <TouchableOpacity
+              style={styles.greenBtn}
+              onPress={
+                selectedFilter === "Open Now"
+                  ? () => setSelectedFilter("All")
+                  : getLocationPermission
+              }
+            >
+              <Ionicons
+                name={
+                  selectedFilter === "Open Now"
+                    ? "grid-outline"
+                    : "refresh-outline"
+                }
+                size={18}
+                color="#fff"
+              />
+              <Text style={styles.greenBtnText}>
+                {selectedFilter === "Open Now" ? "Show All" : "Try Again"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          filtered.map(renderCard)
         )}
       </ScrollView>
     </SafeAreaView>
@@ -353,96 +536,281 @@ export default function TherapistsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
+    backgroundColor: "#F7FDF7",
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
 
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  title: {
-    fontSize: 22,
-    marginVertical: 16,
-  },
-
-  retry: {
-    backgroundColor: "#667eea",
-    padding: 14,
-    borderRadius: 10,
-  },
-
-  retryText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-
+  /* Header */
   header: {
-    padding: 24,
+    paddingTop: 50,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    alignItems: "center",
+    paddingHorizontal: 20,
   },
-
   headerTitle: {
     fontSize: 28,
+    fontWeight: "800",
     color: "#fff",
-    fontWeight: "bold",
-  },
-
-  headerSub: {
-    color: "#fff",
-  },
-
-  filters: {
-    padding: 12,
-  },
-
-  chip: {
-    padding: 10,
-    backgroundColor: "#ddd",
-    borderRadius: 20,
-    marginRight: 8,
-  },
-
-  chipActive: {
-    backgroundColor: "#667eea",
-  },
-
-  card: {
-    backgroundColor: "#fff",
-    margin: 12,
-    padding: 16,
-    borderRadius: 12,
-  },
-
-  name: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-
-  address: {
-    fontSize: 12,
-    color: "#666",
+    textAlign: "center",
     marginTop: 4,
   },
-
-  rating: {
-    fontSize: 12,
+  headerSubtitle: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.9)",
     marginTop: 4,
-  },
-
-  empty: {
-    padding: 24,
-    alignItems: "center",
-  },
-
-  emptyText: {
-    color: "#666",
     textAlign: "center",
   },
 
-  row: {
+  /* Map */
+  mapContainer: {
+    marginHorizontal: 16,
+    marginTop: -15,
+    borderRadius: 20,
+    overflow: "hidden",
+    height: 200,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    backgroundColor: "#fff",
+  },
+
+  /* Filters */
+  filterScroll: {
+    marginTop: 18,
+    paddingLeft: 16,
+  },
+  filterContent: {
+    paddingRight: 16,
+    gap: 8,
+  },
+  chip: {
     flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e8f5e9",
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  chipActive: {
+    backgroundColor: "#77C272",
+  },
+  chipText: {
+    fontSize: 14,
+    color: "#388e3c",
+    fontWeight: "600",
+  },
+  chipTextActive: {
+    color: "#fff",
+  },
+
+  /* Results bar */
+  resultsBar: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  resultsText: {
+    fontSize: 14,
+    color: "#999",
+    fontWeight: "500",
+  },
+
+  /* Card */
+  card: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  avatarCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#77C272",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 12,
+  },
+  cardName: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#232323",
+    flex: 1,
+    marginRight: 8,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  openBadge: {
+    backgroundColor: "#e8f5e9",
+  },
+  closedBadge: {
+    backgroundColor: "#ffebee",
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  cardSpecialty: {
+    fontSize: 13,
+    color: "#888",
+    marginTop: 2,
+  },
+  cardMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    gap: 14,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    gap: 6,
+  },
+  addressText: {
+    fontSize: 13,
+    color: "#999",
+    flex: 1,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: "#f0f0f0",
+    marginVertical: 12,
+  },
+  cardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  actionOutline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1.5,
+    borderColor: "#77C272",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  actionOutlineText: {
+    color: "#388e3c",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  actionSolid: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    backgroundColor: "#77C272",
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  actionSolidText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+
+  /* Loading & empty states */
+  centerBody: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#388e3c",
+    fontWeight: "500",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    padding: 40,
+    marginTop: 10,
+  },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#e8f5e9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: "#888",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  greenBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#77C272",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  greenBtnText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
   },
 });

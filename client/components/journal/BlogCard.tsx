@@ -1,6 +1,6 @@
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 export interface BlogCardProps {
   _id?: string;
@@ -20,6 +20,7 @@ const BlogCard: React.FC<BlogCardProps> = ({
   title,
   author,
   image,
+  excerpt,
   baseUrl,
   likes,
   liked,
@@ -34,36 +35,46 @@ const BlogCard: React.FC<BlogCardProps> = ({
       ? { uri: image }
       : image
       ? { uri: `${baseUrl ?? ""}${image}` }
-      : require("../../assets/default.png"); 
+      : require("../../assets/default.png");
 
   return (
     <TouchableOpacity
-      style={styles.blogCardRow}
-      activeOpacity={0.8}
+      style={styles.card}
+      activeOpacity={0.85}
       onPress={onPress}
     >
       <Image source={resolvedImage} style={styles.cardImage} />
-      <View style={styles.cardTextContainer}>
+      <View style={styles.cardBody}>
         <Text style={styles.cardTitle} numberOfLines={2}>
           {title}
         </Text>
-        <Text style={styles.cardAuthor}>{author}</Text>
-        <View style={styles.cardLikesRow}>
+        <View style={styles.authorRow}>
+          <View style={styles.authorDot} />
+          <Text style={styles.cardAuthor} numberOfLines={1}>{author}</Text>
+        </View>
+        {excerpt ? (
+          <Text style={styles.cardExcerpt} numberOfLines={2}>{excerpt}</Text>
+        ) : null}
+        <View style={styles.bottomRow}>
           <TouchableOpacity
             onPress={onPressLike}
             activeOpacity={0.7}
-            style={{ flexDirection: "row", alignItems: "center" }}
+            style={[styles.likeBtn, liked && styles.likeBtnActive]}
             disabled={liked}
           >
-            {liked ? (
-              <FontAwesome name="thumbs-up" size={18} color="#2e7d32" />
-            ) : (
-              <FontAwesome name="thumbs-o-up" size={18} color="#6b6b6b" />
-            )}
-            <Text style={styles.cardLikesText}>
-              {typeof likes === "number" ? likes : 0} Likes
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={18}
+              color={liked ? "#e53935" : "#888"}
+            />
+            <Text style={[styles.likeText, liked && { color: "#e53935" }]}>
+              {typeof likes === "number" ? likes : 0}
             </Text>
           </TouchableOpacity>
+          <View style={styles.readMoreRow}>
+            <Text style={styles.readMoreText}>Read</Text>
+            <Ionicons name="arrow-forward" size={14} color="#77C272" />
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -73,48 +84,84 @@ const BlogCard: React.FC<BlogCardProps> = ({
 export default BlogCard;
 
 const styles = StyleSheet.create({
-  blogCardRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  card: {
     backgroundColor: "#fff",
-    borderRadius: 17,
-    marginBottom: 16,
-    padding: 10,
+    borderRadius: 18,
+    marginBottom: 14,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 15,
-    marginRight: 16,
-    backgroundColor: "#ececec",
+    width: "100%",
+    height: 160,
+    backgroundColor: "#e8f5e9",
   },
-  cardTextContainer: {
-    flex: 1,
-    justifyContent: "center",
+  cardBody: {
+    padding: 14,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 2,
-    color: "#232323",
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#222",
+    marginBottom: 6,
+  },
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  authorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#77C272",
   },
   cardAuthor: {
     fontSize: 13,
-    color: "#B0B0B0",
-    marginBottom: 5,
+    color: "#888",
+    fontWeight: "500",
   },
-  cardLikesRow: {
+  cardExcerpt: {
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  bottomRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  cardLikesText: {
+  likeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  likeBtnActive: {
+    backgroundColor: "#ffebee",
+  },
+  likeText: {
     fontSize: 13,
-    color: "#868686",
-    marginLeft: 7,
+    color: "#888",
+    fontWeight: "600",
+  },
+  readMoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  readMoreText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#77C272",
   },
 });

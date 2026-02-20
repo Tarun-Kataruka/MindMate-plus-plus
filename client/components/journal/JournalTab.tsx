@@ -5,12 +5,11 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Image,
   Modal,
   Pressable,
   TextInput,
 } from "react-native";
-import { Colors } from "@/constants/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 interface JournalItem {
   _id?: string;
@@ -27,31 +26,57 @@ interface JournalTabProps {
   onDeleted?: (id: string) => void;
 }
 
+const MOOD_ICONS: (keyof typeof Ionicons.glyphMap)[] = [
+  "leaf-outline",
+  "heart-outline",
+  "sparkles-outline",
+  "sunny-outline",
+  "flower-outline",
+  "star-outline",
+];
+
+const ACCENT_COLORS = ["#6BCB77", "#42A5F5", "#AB47BC", "#FF7043", "#26C6DA", "#FFCA28"];
+
 const JournalEntryItem: React.FC<{
   date: string;
   time?: string;
   title?: string;
   summary: string;
+  index: number;
   onPress: () => void;
   onDelete?: () => void;
-}> = ({ date, time, title, summary, onPress, onDelete }) => (
-  <TouchableOpacity style={styles.entryCard} onPress={onPress}>
-    <Text style={styles.entryDate}>{date}</Text>
-    {time ? <Text style={styles.entryTime}>{time}</Text> : null}
-    <View style={styles.separator} />
-    {title ? (
-      <Text style={styles.entryTitle} numberOfLines={1}>{title}</Text>
-    ) : null}
-    <Text style={styles.entrySummary} numberOfLines={3}>
-      {summary}
-    </Text>
-    {!!onDelete && (
-      <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
-        <Text style={styles.deleteText}>Delete</Text>
-      </TouchableOpacity>
-    )}
-  </TouchableOpacity>
-);
+}> = ({ date, time, title, summary, index, onPress, onDelete }) => {
+  const accent = ACCENT_COLORS[index % ACCENT_COLORS.length];
+  const icon = MOOD_ICONS[index % MOOD_ICONS.length];
+
+  return (
+    <TouchableOpacity style={styles.entryCard} onPress={onPress} activeOpacity={0.8}>
+      <View style={[styles.entryAccent, { backgroundColor: accent }]} />
+      <View style={styles.entryContent}>
+        <View style={styles.entryTopRow}>
+          <View style={[styles.entryIconCircle, { backgroundColor: accent + "18" }]}>
+            <Ionicons name={icon} size={18} color={accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.entryDate}>{date}</Text>
+            {time ? <Text style={styles.entryTime}>{time}</Text> : null}
+          </View>
+          {!!onDelete && (
+            <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="trash-outline" size={18} color="#e53935" />
+            </TouchableOpacity>
+          )}
+        </View>
+        {title ? (
+          <Text style={styles.entryTitle} numberOfLines={1}>{title}</Text>
+        ) : null}
+        <Text style={styles.entrySummary} numberOfLines={3}>
+          {summary}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const JournalTab: React.FC<JournalTabProps> = ({ data, onPressItem, onCreated, onDeleted }) => {
   const [showCreate, setShowCreate] = useState(false);
@@ -91,35 +116,21 @@ const JournalTab: React.FC<JournalTabProps> = ({ data, onPressItem, onCreated, o
       });
       if (!res.ok) throw new Error('Failed to delete');
       onDeleted && onDeleted(id);
-    } catch  {}
+    } catch {}
   };
 
   return (
     <View style={styles.container}>
-      {/* Profile Section */}
-      <View style={styles.profileSection}>
-        <Image
-          source={{
-            uri: "https://cdn-icons-png.flaticon.com/512/4140/4140048.png",
-          }}
-          style={styles.avatar}
-        />
-        <View>
-          <Text style={styles.greeting}>Hi there!</Text>
-          <Text style={styles.dateText}>{todayStr}</Text>
-        </View>
-      </View>
-
-      {/* Journal List */}
       <FlatList
         data={data}
         keyExtractor={(item) => (item._id || item.id) as string}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <JournalEntryItem
             date={item.date}
             time={(item as any).time}
             title={item.title}
             summary={item.summary}
+            index={index}
             onPress={() =>
               onPressItem && onPressItem((item._id || item.id) as string)
             }
@@ -128,38 +139,58 @@ const JournalTab: React.FC<JournalTabProps> = ({ data, onPressItem, onCreated, o
         )}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
-        overScrollMode="never"
-        bounces={false}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <View style={styles.emptyCircle}>
+              <Ionicons name="book-outline" size={40} color="#c8e6c9" />
+            </View>
+            <Text style={styles.emptyTitle}>No journal entries yet</Text>
+            <Text style={styles.emptyText}>
+              Tap the + button to write your first entry
+            </Text>
+          </View>
+        }
       />
 
-      {/* Floating Add Button */}
-       <TouchableOpacity style={styles.fab} onPress={() => setShowCreate(true)}>
-        <Text style={styles.fabText}>＋</Text>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowCreate(true)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
 
-       <Modal visible={showCreate} animationType="slide" transparent onRequestClose={() => setShowCreate(false)}>
-         <Pressable style={styles.modalBackdrop} onPress={() => setShowCreate(false)}>
-           <Pressable style={styles.modalCard} onPress={() => {}}>
-             <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 12 }}>New Journal</Text>
-             <TextInput
-               placeholder="Title"
-               style={styles.input}
-               value={form.title}
-               onChangeText={(v) => setForm((f) => ({ ...f, title: v }))}
-             />
-             <TextInput
-               placeholder="Summary"
-               style={[styles.input, { height: 90 }]}
-               multiline
-               value={form.summary}
-               onChangeText={(v) => setForm((f) => ({ ...f, summary: v }))}
-             />
-             <TouchableOpacity onPress={onSubmitCreate} style={styles.submitBtn}>
-               <Text style={styles.submitText}>Save</Text>
-             </TouchableOpacity>
-           </Pressable>
-         </Pressable>
-       </Modal>
+      <Modal visible={showCreate} animationType="slide" transparent onRequestClose={() => setShowCreate(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowCreate(false)}>
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeaderRow}>
+              <Ionicons name="book-outline" size={22} color="#388e3c" />
+              <Text style={styles.modalTitle}>New Journal Entry</Text>
+            </View>
+            <Text style={styles.modalDate}>{todayStr}</Text>
+            <TextInput
+              placeholder="Give it a title..."
+              placeholderTextColor="#aaa"
+              style={styles.input}
+              value={form.title}
+              onChangeText={(v) => setForm((f) => ({ ...f, title: v }))}
+            />
+            <TextInput
+              placeholder="What's on your mind?"
+              placeholderTextColor="#aaa"
+              style={[styles.input, styles.textArea]}
+              multiline
+              value={form.summary}
+              onChangeText={(v) => setForm((f) => ({ ...f, summary: v }))}
+            />
+            <TouchableOpacity onPress={onSubmitCreate} style={styles.submitBtn} activeOpacity={0.85}>
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Text style={styles.submitText}>Save Entry</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -169,140 +200,170 @@ export default JournalTab;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.surfaceBg,
-  },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.journalHeaderBg,
-    padding: 16,
-    borderBottomRightRadius: 70,
-    borderBottomLeftRadius: 0,
-    marginBottom: 18,
-  },
-  avatar: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
-    marginRight: 14,
-    backgroundColor: '#fff',
-    borderWidth: 3,
-    borderColor: '#fff',
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.neutralText,
-    marginBottom: 5,
-  },
-  dateText: {
-    fontSize: 16,
-    color: Colors.neutralText,
-    fontWeight: '400',
+    backgroundColor: "#F7FDF7",
   },
   listContainer: {
-    paddingHorizontal: 12,
-    paddingBottom: 90,
-  },
-  deleteBtn: {
-    alignSelf: 'flex-end',
-    marginTop: 8,
-    backgroundColor: Colors.danger,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  deleteText: {
-    color: '#fff',
-    fontWeight: '700',
+    padding: 16,
+    paddingBottom: 100,
   },
   entryCard: {
-    backgroundColor: Colors.journalCardBg,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 16,
     marginBottom: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  entryAccent: {
+    width: 5,
+  },
+  entryContent: {
+    flex: 1,
+    padding: 14,
+  },
+  entryTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  entryIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
   },
   entryDate: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: Colors.journalAccent,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#333",
   },
   entryTime: {
-    fontSize: 13,
-    color: Colors.journalAccent,
-    marginBottom: 4,
-  },
-  separator: {
-    height: 2,
-    backgroundColor: Colors.journalSeparator,
-    marginVertical: 6,
-    width: '95%',
-    alignSelf: 'flex-start',
-    borderRadius: 1,
+    fontSize: 12,
+    color: "#999",
+    marginTop: 1,
   },
   entryTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 3,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#222",
+    marginBottom: 4,
   },
   entrySummary: {
     fontSize: 14,
-    color: Colors.neutralText,
-    marginBottom: 2,
-    letterSpacing: 0.15,
+    color: "#666",
+    lineHeight: 20,
+  },
+  deleteBtn: {
+    padding: 6,
+    backgroundColor: "#ffebee",
+    borderRadius: 8,
+  },
+  emptyWrap: {
+    alignItems: "center",
+    paddingTop: 60,
+    gap: 8,
+  },
+  emptyCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f1f8e9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#555",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#999",
   },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 24,
-    right: 24,
-    backgroundColor: Colors.journalHeaderBg,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
+    right: 20,
+    backgroundColor: "#77C272",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 6,
-    shadowColor: Colors.journalSeparator,
+    shadowColor: "#388e3c",
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.22,
-    shadowRadius: 5,
-  },
-  fabText: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '700',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
   },
   modalCard: {
-    backgroundColor: '#fff',
-    padding: 19,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    backgroundColor: "#fff",
+    padding: 22,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#ddd",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#333",
+  },
+  modalDate: {
+    fontSize: 13,
+    color: "#999",
+    marginBottom: 16,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
     fontSize: 15,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: "top",
   },
   submitBtn: {
-    backgroundColor: '#388e3c',
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 7,
+    backgroundColor: "#388e3c",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 4,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
   submitText: {
-    color: '#fff',
-    fontWeight: '700',
+    color: "#fff",
+    fontWeight: "700",
     fontSize: 16,
   },
 });
