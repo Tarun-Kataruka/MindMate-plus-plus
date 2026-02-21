@@ -94,7 +94,8 @@
     "contactPhone": "సంప్రదింపు ఫోన్",
     "saveChanges": "మార్పులను సేవ్ చేయి",
     "selectLanguage": "భాషను ఎంచుకోండి",
-    "language": "భాష"
+    "language": "భాష",
+    "voiceSupport": "వాయిస్ సపోర్ట్ (మైక్రోఫోన్)"
   },
   "concerns": {
     "anger": "కోపం",

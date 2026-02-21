@@ -10,12 +10,14 @@ import {
   Platform,
   Alert,
   Modal,
+  Switch,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser, UserData } from "./profile";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n/config";
+import { useVoice } from "@/contexts/VoiceContext";
 const Colors = {
   primary: "#77C272",
   secondary: "#388e3c",
@@ -52,6 +54,7 @@ export default function EditProfileScreen() {
     "/"
   );
   const { userData, setUserData } = useUser();
+  const { voiceEnabled, setVoiceEnabled, requestVoice } = useVoice();
   const [fullName, setFullName] = useState(userData.name);
   const [email, setEmail] = useState(userData.email);
   const [gender, setGender] = useState(userData.gender);
@@ -175,7 +178,7 @@ export default function EditProfileScreen() {
           <Ionicons name="arrow-back" size={28} color={Colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerText}>{t("editProfile.title")}</Text>
-        <View style={{ width: 28 }} /> {/* Spacer for symmetry */}
+        <View style={{ width: 28 }} />
       </View>
 
       {/* Avatar Section */}
@@ -228,6 +231,22 @@ export default function EditProfileScreen() {
 
       {/* Form Inputs */}
       <View style={styles.formContainer}>
+        {/* Voice support toggle */}
+        <View style={styles.voiceSupportRow}>
+          <Text style={styles.radioLabel}>{t("editProfile.voiceSupport")}</Text>
+          <Switch
+            value={voiceEnabled === true}
+            onValueChange={(value) => {
+              setVoiceEnabled(value);
+              if (value) {
+                requestVoice().catch(() => {});
+              }
+            }}
+            trackColor={{ false: Colors.lightGrey, true: Colors.primary }}
+            thumbColor={Colors.white}
+          />
+        </View>
+
         {/* Language Selector */}
         <View style={styles.languageSelector}>
           <Text style={styles.radioLabel}>{t("editProfile.selectLanguage")}:</Text>
@@ -613,7 +632,7 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     marginTop: 20,
     marginBottom: 10,
-    padding : 6
+    padding: 6,
   },
   concernsGrid: {
     flexDirection: "row",
@@ -640,6 +659,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     letterSpacing: 1,
+  },
+  voiceSupportRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGrey,
+    paddingBottom: 15,
   },
   languageSelector: {
     flexDirection: "row",

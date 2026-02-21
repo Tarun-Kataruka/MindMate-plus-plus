@@ -94,7 +94,8 @@
     "contactPhone": "தொடர்பு தொலைபேசி",
     "saveChanges": "மாற்றங்களைச் சேமிக்கவும்",
     "selectLanguage": "மொழியைத் தேர்ந்தெடுக்கவும்",
-    "language": "மொழி"
+    "language": "மொழி",
+    "voiceSupport": "குரல் ஆதரவு (மைக்ரோஃபோன்)"
   },
   "concerns": {
     "anger": "கோபம்",

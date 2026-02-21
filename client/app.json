@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "MindMate uses the microphone to stream your voice for support and wellness features."
+      }
     },
     "android": {
       "adaptiveIcon": {

@@ -2,9 +2,12 @@ import { Tabs } from "expo-router";
 import React from "react";
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { VoiceProvider } from "@/contexts/VoiceContext";
+import VoiceSupportModal from "@/components/VoiceSupportModal";
+import VoiceIndicator from "@/components/VoiceIndicator";
 
 export default function TabLayout() {
   const { t } = useTranslation();
@@ -29,8 +32,10 @@ export default function TabLayout() {
   };
 
   return (
-    <Tabs screenOptions={tabBarOptions}>
-      <Tabs.Screen
+    <VoiceProvider>
+      <View style={{ flex: 1 }}>
+        <VoiceSupportModal /><VoiceIndicator /><Tabs screenOptions={tabBarOptions}>
+          <Tabs.Screen
         name="index"
         options={{
           title: t("tabs.home"),
@@ -80,6 +85,8 @@ export default function TabLayout() {
         options={{ href: null, title: t("tabs.editProfile") }}
       />
       <Tabs.Screen name="chat" options={{ href: null, title: t("tabs.chat") }} />
-    </Tabs>
+        </Tabs>
+      </View>
+    </VoiceProvider>
   );
 }

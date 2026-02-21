@@ -41,10 +41,10 @@ export default function DraggableMiniPlayer() {
   
   // Define the inner player content using a separate variable
   const PlayerContent = (
-    <View style={styles.container}> 
+    <View style={styles.container}>
       {collapsed ? (
-        <View style={styles.inner}> 
-          <View style={styles.row}> 
+        <View style={styles.inner}>
+          <View style={styles.row}>
             <TouchableOpacity onPress={() => setCollapsed(false)} style={styles.iconBtn}>
               <Ionicons name="expand" size={20} color="#fff" />
             </TouchableOpacity>

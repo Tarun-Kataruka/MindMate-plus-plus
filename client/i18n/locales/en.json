@@ -94,7 +94,8 @@
     "contactPhone": "Contact phone",
     "saveChanges": "SAVE CHANGES",
     "selectLanguage": "Select Language",
-    "language": "Language"
+    "language": "Language",
+    "voiceSupport": "Voice support (microphone)"
   },
   "concerns": {
     "anger": "Anger",

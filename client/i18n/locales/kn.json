@@ -94,7 +94,8 @@
     "contactPhone": "ಸಂಪರ್ಕ ಫೋನ್",
     "saveChanges": "ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ",
     "selectLanguage": "ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
-    "language": "ಭಾಷೆ"
+    "language": "ಭಾಷೆ",
+    "voiceSupport": "ವಾಯ್ಸ್ ಸಪೋರ್ಟ್ (ಮೈಕ್ರೋಫೋನ್)"
   },
   "concerns": {
     "anger": "ಕೋಪ",
