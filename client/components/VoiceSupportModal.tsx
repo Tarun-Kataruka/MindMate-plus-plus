@@ -16,8 +16,10 @@ export default function VoiceSupportModal() {
   const [status, setStatus] = useState<'idle' | 'requesting' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Only show modal on first time (never chosen). If they chose "Not now" or disabled in profile, don't ask again until they enable it themselves.
-  const visible = voiceEnabled === null;
+  const hasAuthToken =
+    // @ts-ignore
+    typeof globalThis !== 'undefined' && Boolean((globalThis as any).authToken);
+  const visible = hasAuthToken && voiceEnabled === null;
 
   const closeModal = useCallback(() => {
     setStatus('idle');
