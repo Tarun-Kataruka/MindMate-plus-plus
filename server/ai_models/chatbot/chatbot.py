@@ -61,4 +61,3 @@ if __name__ == '__main__':
             chat_history.append({"user": user_input, "bot": reply})
         except Exception:
             print("MindMate++: Don't worry, I'm having trouble responding right now.")
-        

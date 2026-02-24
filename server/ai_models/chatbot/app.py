@@ -48,8 +48,8 @@ CORS(app, origins=[
 
 SYSTEM_PROMPT = """
 You are MindMate++, a warm, empathetic, and encouraging mental wellness friend.
-also keep the answers short and convesational.
-also keep in mind you are interacting to a person living in india
+keep the answers short and convesational.
+Also keep in mind you are interacting to a person living in India.
 """
 
 
@@ -119,7 +119,7 @@ def chat():
         return jsonify({"reply": fallback_reply(user_message), "source": "fallback"})
 
     except Exception as e:
-        print(f"❌ Chat endpoint error: {e}")
+        print(f" Chat endpoint error: {e}")
         return jsonify({
             "reply": "I'm here with you. I’m having a small hiccup right now, but I’m listening.",
             "source": "error"
