@@ -1,5 +1,3 @@
-"""Command-line entry point for the voice analyzer."""
-
 from __future__ import annotations
 
 import argparse
@@ -14,12 +12,14 @@ from services.asr_service import transcribe_audio
 from services.emotion_text import classify_emotion
 
 
-def _analyze_file(audio_path: Path) -> tuple[str, str]:
-	"""Return the transcript and emotion for the provided audio file."""
+def _analyze_file(audio_path: Path) -> tuple[str, str, str]:
+	"""Return the transcript, detected language, and emotion for the audio file."""
 	audio_bytes = audio_path.read_bytes()
-	transcript = transcribe_audio(audio_bytes).strip()
+	result = transcribe_audio(audio_bytes)
+	transcript = result["text"].strip()
+	language = result["language"]
 	emotion = classify_emotion(transcript)
-	return transcript, emotion
+	return transcript, language, emotion
 
 
 def _run_for_path(path_str: str) -> bool:
@@ -29,13 +29,14 @@ def _run_for_path(path_str: str) -> bool:
 		return False
 
 	print(f"\nAnalyzing {path} ...")
-	transcript, emotion = _analyze_file(path)
+	transcript, language, emotion = _analyze_file(path)
 
 	if transcript:
 		print("Transcript:\n" + transcript)
 	else:
 		print("Transcript: <empty>")
 
+	print(f"Detected language: {language}")
 	print(f"Detected emotion: {emotion}\n")
 	return True
 
