@@ -163,15 +163,51 @@ export function ProfileScreenContent() {
     "Sleep disorders",
   ];
 
-  const concernKeyMap: { [key: string]: string } = {
-    "Anger": "anger",
-    "Anxiety and Panic Attacks": "anxiety",
-    "Depression": "depression",
-    "Eating disorders": "eatingDisorder",
-    "Self-esteem": "selfEsteem",
-    "Self-harm": "selfHarm",
-    "Stress": "stress",
-    "Sleep disorders": "sleepDisorder",
+  // Backend stores `concerns` lowercased and may keep spaces/hyphens/plurals
+  // (e.g. "Self-esteem" -> "self-esteem", "Sleep disorders" -> "sleep disorders").
+  // Normalize those strings so Profile chips can reliably match selection.
+  const normalizeConcern = (value: string) =>
+    String(value ?? "")
+      .toLowerCase()
+      .trim()
+      // treat hyphens as spaces for mapping
+      .replace(/-/g, " ")
+      // collapse extra whitespace
+      .replace(/\s+/g, " ");
+
+  const concernKeyMap: Record<string, string> = {
+    // anger
+    anger: "anger",
+
+    // anxiety
+    "anxiety and panic attacks": "anxiety",
+    "anxiety and panic attack": "anxiety",
+    anxiety: "anxiety",
+    anxietyandpanicattacks: "anxiety",
+    anxietyandpanicattack: "anxiety",
+
+    // depression
+    depression: "depression",
+
+    // eating
+    "eating disorders": "eatingDisorder",
+    "eating disorder": "eatingDisorder",
+    eatingdisorder: "eatingDisorder",
+
+    // self-esteem
+    "self esteem": "selfEsteem",
+    selfesteem: "selfEsteem",
+
+    // self-harm
+    "self harm": "selfHarm",
+    selfharm: "selfHarm",
+
+    stress: "stress",
+
+    // sleep
+    "sleep disorders": "sleepDisorder",
+    "sleep disorder": "sleepDisorder",
+    sleepdisorder: "sleepDisorder",
   };
 
   const terms = [
@@ -260,10 +296,10 @@ export function ProfileScreenContent() {
         <Text style={styles.sectionTitle}>{t("profile.myConcerns")}</Text>
         <View style={styles.concernsContainer}>
           {allConcerns.map((concern, index) => {
-            const concernKey = concernKeyMap[concern];
+            const concernKey = concernKeyMap[normalizeConcern(concern)];
             const translatedText = concernKey ? t(`concerns.${concernKey}`) : concern;
             const translatedUserConcerns = userData.concerns.map((c) => {
-              const key = concernKeyMap[c];
+              const key = concernKeyMap[normalizeConcern(c)];
               return key ? t(`concerns.${key}`) : c;
             });
             return (

@@ -51,10 +51,70 @@ export const getBlogs = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
     const concerns = user.concerns || [];
-    if (concerns.length === 0) {
+    if (!Array.isArray(concerns) || concerns.length === 0) {
       return res.json([]);
     }
-    const blogs = await Blog.find({ category: { $in: concerns } });
+
+    // User concerns are stored lowercased and may include pluralization and hyphens
+    // (e.g. "Sleep disorders" -> "sleep disorders", "Self-esteem" -> "self-esteem").
+    // Blog categories are defined in `CATEGORIES` and use singular + specific spacing:
+    // e.g. "sleep disorder", "self esteem", etc.
+    const normalizeConcern = (value) =>
+      String(value ?? "")
+        .toLowerCase()
+        .trim()
+        .replace(/-/g, " ")
+        .replace(/\s+/g, " ");
+
+    const concernToBlogCategory = {
+      // anger / depression / stress
+      anger: "anger",
+      depression: "depression",
+      stress: "stress",
+
+      // anxiety
+      "anxiety and panic attacks": "anxiety and panic attack",
+      "anxiety and panic attack": "anxiety and panic attack",
+      anxietyandpanicattacks: "anxiety and panic attack",
+      anxietyandpanicattack: "anxiety and panic attack",
+      anxiety: "anxiety and panic attack",
+
+      // eating
+      "eating disorders": "eating disorder",
+      "eating disorder": "eating disorder",
+      eatingdisorder: "eating disorder",
+      "eatingdisorder ": "eating disorder",
+      "eating disorders ": "eating disorder",
+      eating: "eating disorder",
+
+      // self-esteem / self-harm (space vs hyphen, camelCase vs spaced)
+      "self esteem": "self esteem",
+      "self esteem ": "self esteem",
+      selfesteem: "self esteem",
+      "self harm": "self harm",
+      selfharm: "self harm",
+
+      // sleep
+      "sleep disorders": "sleep disorder",
+      "sleep disorder": "sleep disorder",
+      sleepdisorder: "sleep disorder",
+      sleep: "sleep disorder",
+    };
+
+    const blogCategories = Array.from(
+      new Set(
+        concerns
+          .map((c) => concernToBlogCategory[normalizeConcern(c)])
+          .filter(Boolean)
+      )
+    );
+
+    if (blogCategories.length === 0) {
+      return res.json([]);
+    }
+
+    // Fetch ALL blogs for the user's multiple concerns (union).
+    const blogs = await Blog.find({ category: { $in: blogCategories } });
     res.json(blogs);
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch blogs" });
