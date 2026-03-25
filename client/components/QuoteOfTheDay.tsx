@@ -93,7 +93,7 @@ export default function QuoteOfTheDay({ apiBaseUrl }: QuoteOfTheDayProps) {
         color="rgba(249,168,37,0.2)"
         style={styles.bgIcon}
       />
-      <Text style={styles.quoteText}>"{quoteData.content}"</Text>
+      <Text style={styles.quoteText}>{`"${quoteData.content}"`}</Text>
       <View style={styles.authorRow}>
         <View style={styles.dash} />
         <Text style={styles.authorText}>{quoteData.author}</Text>

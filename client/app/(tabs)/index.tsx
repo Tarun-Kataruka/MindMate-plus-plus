@@ -11,6 +11,7 @@ import QuoteOfTheDay from "../../components/QuoteOfTheDay";
 import { router } from "expo-router";
 import TracksSection from "../../components/TracksSection";
 import BrainBreak from "../../components/BrainBreak";
+import EmotionTrends from "../../components/EmotionTrends";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
@@ -134,6 +135,7 @@ export default function HomeScreen() {
       </View>
 
       {/* ===== TRACKS ===== */}
+      <EmotionTrends />
       <TracksSection />
     </ScrollView>
   );
