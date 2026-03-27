@@ -1,0 +1,20 @@
+{
+  "legacyWatch": true,
+  "watch": [
+    "server.js",
+    "config",
+    "controllers",
+    "middleware",
+    "models",
+    "routes",
+    "utils"
+  ],
+  "ext": "js,mjs,cjs,json",
+  "ignore": [
+    "ai_models/**",
+    "venv/**",
+    "uploads/**",
+    "node_modules/**",
+    "*.log"
+  ]
+}

@@ -5,7 +5,7 @@ import { useVoice } from '@/contexts/VoiceContext';
 import { Colors } from '@/constants/theme';
 
 export default function VoiceIndicator() {
-  const { isStreaming, stopVoice } = useVoice();
+  const { isStreaming, stopVoice, lastReply, lastError } = useVoice();
 
   if (!isStreaming) return null;
 
@@ -16,6 +16,20 @@ export default function VoiceIndicator() {
         <Text style={styles.label}>Voice on</Text>
         <Ionicons name="close" size={18} color={Colors.neutralText} />
       </TouchableOpacity>
+      {lastReply ? (
+        <View style={styles.replyCard}>
+          <Text style={styles.replyText} numberOfLines={3}>
+            {lastReply}
+          </Text>
+        </View>
+      ) : null}
+      {lastError ? (
+        <View style={styles.errorCard}>
+          <Text style={styles.errorText} numberOfLines={2}>
+            {lastError}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -53,5 +67,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.neutralText,
     fontWeight: '500',
+  },
+  replyCard: {
+    marginTop: 8,
+    backgroundColor: Colors.white,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    maxWidth: 360,
+  },
+  replyText: {
+    fontSize: 13,
+    color: Colors.secondary,
+  },
+  errorCard: {
+    marginTop: 8,
+    backgroundColor: '#ffe5e5',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    maxWidth: 360,
+  },
+  errorText: {
+    fontSize: 12,
+    color: Colors.danger,
   },
 });

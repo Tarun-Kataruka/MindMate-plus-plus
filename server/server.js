@@ -4,9 +4,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { WebSocketServer } from 'ws';
-import jwt from 'jsonwebtoken';
+import fetch from 'node-fetch';
 import connectDB from './config/db.js';
+import { requireAuth } from './middleware/auth.js';
 
 // Resolve __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -50,49 +50,77 @@ app.use('/api/v1/calendar', calendarRoutes);
 app.use('/api/planner', plannerRoutes);
 app.use('/api/therapists', therapistRoutes);
 
+app.post('/api/voice/process', requireAuth, async (req, res) => {
+  try {
+    const { audioBase64, mimeType } = req.body || {};
+    const userId = req.userId || 'unknown';
+    if (!audioBase64 || typeof audioBase64 !== 'string') {
+      return res.status(400).json({ error: 'audioBase64 is required' });
+    }
+
+    let audioBuffer;
+    try {
+      audioBuffer = Buffer.from(audioBase64, 'base64');
+    } catch {
+      return res.status(400).json({ error: 'Invalid base64 audio payload' });
+    }
+    if (!audioBuffer?.length) {
+      return res.status(400).json({ error: 'Decoded audio is empty' });
+    }
+    console.log(`[voice] Received audio payload: ${audioBuffer.length} bytes (userId: ${userId}, mime: ${mimeType || 'application/octet-stream'})`);
+
+    const voiceApiUrl = process.env.FLASK_VOICE_URL || 'http://localhost:5002';
+
+    const voiceResp = await fetch(`${voiceApiUrl}/analyze-audio`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': typeof mimeType === 'string' && mimeType.trim() ? mimeType : 'application/octet-stream',
+      },
+      body: audioBuffer,
+    });
+
+    if (!voiceResp.ok) {
+      const errText = await voiceResp.text().catch(() => '');
+      return res.status(502).json({ error: `Voice model failed: ${errText || voiceResp.statusText}` });
+    }
+
+    const voiceData = await voiceResp.json();
+    const transcript = String(voiceData.transcript || '').trim();
+    const language = voiceData.language || 'unknown';
+    const emotion = voiceData.emotion || 'neutral';
+    const reply = String(voiceData.reply || '').trim();
+    const source = voiceData.source || 'voice';
+    console.log(`[voice] Transcript: "${transcript.slice(0, 180)}" (lang: ${language}, emotion: ${emotion}, userId: ${userId})`);
+
+    if (!transcript) {
+      console.log(`[voice] Empty transcript returned by voice model (userId: ${userId})`);
+      return res.json({
+        transcript: '',
+        language,
+        emotion,
+        reply,
+        source: 'voice_empty',
+      });
+    }
+    console.log(`[voice] AI reply: "${reply.slice(0, 180)}" (source: ${source}, userId: ${userId})`);
+    return res.json({
+      transcript,
+      language,
+      emotion,
+      reply,
+      source,
+    });
+  } catch (error) {
+    console.error('voice process route error:', error);
+    return res.status(500).json({ error: 'Voice processing failed' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Create HTTP server and attach WebSocket for voice streaming
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: '/audio' });
-
-wss.on('connection', (ws, req) => {
-  const url = new URL(req.url || '', `http://${req.headers.host}`);
-  const token = url.searchParams.get('token');
-  if (!token || !process.env.JWT_SECRET) {
-    console.log('[voice] Rejected: no token or JWT_SECRET');
-    ws.close(4001, 'Unauthorized');
-    return;
-  }
-  let decoded;
-  try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
-  } catch (e) {
-    console.log('[voice] Rejected: invalid token');
-    ws.close(4001, 'Invalid token');
-    return;
-  }
-
-  let chunkCount = 0;
-  const userId = decoded.sub || 'unknown';
-  console.log(`[voice] Client connected (userId: ${userId})`);
-
-  ws.on('message', (data) => {
-    if (Buffer.isBuffer(data) && data.length > 0) {
-      chunkCount += 1;
-      console.log(`[voice] Chunk #${chunkCount} received, size: ${data.length} bytes (userId: ${userId})`);
-      // TODO: pipe to speech-to-text (Whisper, Deepgram, etc.) or store
-    }
-  });
-
-  ws.on('close', () => {
-    console.log(`[voice] Client disconnected, total chunks received: ${chunkCount} (userId: ${userId})`);
-  });
-});
-
 // Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT} (HTTP + WebSocket /audio)`));
+http.createServer(app).listen(PORT, () => console.log(`Server running on port ${PORT}`));
